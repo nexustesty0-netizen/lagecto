@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/loyalty",
-      "schedule": "15 * * * *"
+      "schedule": "15 0 * * *"
     },
     {
       "path": "/api/cron/stebo-weekly",
