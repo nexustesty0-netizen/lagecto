@@ -1,10 +1,10 @@
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/primitives";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { CampaignAdminForm } from "@/components/admin/CampaignAdminForm";
 
 export default async function AdminCampaignsPage() {
-  await requireRole("admin");
+  await requireAdminLevel("admin");
   const supabase = await createServerSupabase();
   const { data: campaigns } = await supabase.from("campaigns").select("*").order("created_at", { ascending: false });
   return (

@@ -12,6 +12,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   const { id } = await context.params;
   const payment = await PaymentService.getPaymentStatus(id);
   if (!payment) return NextResponse.json({ error: "Payment not found." }, { status: 404 });
+  if (payment.customer_id !== auth.profile.id && auth.profile.role !== "admin") {
+    return NextResponse.json({ error: "Not authorized." }, { status: 403 });
+  }
   const result = await PaymentService.verifyPayment(id);
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
   return NextResponse.json(result);

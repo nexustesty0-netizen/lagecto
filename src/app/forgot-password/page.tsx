@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AuthShell } from "@/components/auth/AuthShell";
-import { Alert, PrimaryButton, TextField } from "@/components/ui/forms";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { AuthAlert, AuthInput, AuthSubmit } from "@/components/auth/AuthFields";
 
 export default function ForgotPasswordPage() {
   const [identifier, setIdentifier] = useState("");
@@ -24,33 +24,35 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthShell
-      title="Reset password"
-      subtitle="Enter your email, username or Shop ID. If an account exists, we will send reset instructions."
-    >
+    <AuthLayout>
+      <h1 className="auth-title">Forgot your password?</h1>
+      <p className="auth-subtitle">
+        Enter the email, phone or Shop ID for your account. If it exists, we will send a reset link.
+      </p>
       {done ? (
-        <div className="grid gap-4">
-          <Alert tone="success">If an account exists, instructions are on the way.</Alert>
-          <Link href="/login" className="text-sm font-medium text-[#0B6E4F]">
-            Back to sign in
+        <div className="mt-6 grid gap-4">
+          <AuthAlert tone="success">If an account exists, that inbox has a reset link.</AuthAlert>
+          <Link href="/login" className="auth-link-strong">
+            Return to login
           </Link>
         </div>
       ) : (
-        <form onSubmit={onSubmit} className="grid gap-4">
-          <TextField
-            label="Email, username or Shop ID"
+        <form onSubmit={onSubmit} className="mt-6 grid gap-3.5">
+          <AuthInput
+            label="Email address"
+            icon="mail"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
             required
           />
-          <PrimaryButton type="submit" loading={loading}>
-            Send reset link
-          </PrimaryButton>
-          <Link href="/login" className="text-sm font-medium text-[#0B6E4F]">
-            Back to sign in
+          <AuthSubmit type="submit" loading={loading}>
+            {loading ? "Sending…" : "Send reset link"}
+          </AuthSubmit>
+          <Link href="/login" className="auth-link text-center">
+            Return to login
           </Link>
         </form>
       )}
-    </AuthShell>
+    </AuthLayout>
   );
 }

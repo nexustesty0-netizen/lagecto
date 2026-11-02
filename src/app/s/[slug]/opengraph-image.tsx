@@ -25,42 +25,19 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           display: "flex",
           width: "100%",
           height: "100%",
-          position: "relative",
-          background: "linear-gradient(135deg, #04180F 0%, #0B6E4F 48%, #2E8B57 100%)",
+          background: "#0B6E4F",
           color: "#FFFFFF",
         }}
       >
-        {banner ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            alt=""
-            src={banner}
-            width={1200}
-            height={630}
-            style={{ position: "absolute", left: 0, top: 0, width: 1200, height: 630, objectFit: "cover" }}
-          />
-        ) : null}
-        <div
-          style={{
-            display: "flex",
-            position: "absolute",
-            left: 0,
-            top: 0,
-            width: 1200,
-            height: 630,
-            background: banner
-              ? "linear-gradient(90deg, rgba(4,24,15,0.88) 0%, rgba(11,110,79,0.58) 58%, rgba(4,24,15,0.28) 100%)"
-              : "transparent",
-          }}
-        />
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            width: "100%",
-            height: "100%",
-            padding: 72,
+            width: 600,
+            height: 630,
+            padding: 56,
+            background: "#0B6E4F",
           }}
         >
           <div style={{ display: "flex", alignItems: "center" }}>
@@ -81,7 +58,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
                   height: 88,
                   borderRadius: 24,
                   background: "#D4AF37",
-                  color: "#04180F",
+                  color: "#0B6E4F",
                   fontSize: 40,
                   fontWeight: 700,
                   alignItems: "center",
@@ -104,17 +81,16 @@ export default async function Image({ params }: { params: Promise<{ slug: string
               {BRAND.name.toUpperCase()}
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", maxWidth: 940 }}>
-            <div style={{ display: "flex", fontSize: 64, fontWeight: 700, lineHeight: 1.1 }}>{name}</div>
+          <div style={{ display: "flex", flexDirection: "column", maxWidth: 500 }}>
+            <div style={{ display: "flex", fontSize: 52, fontWeight: 700, lineHeight: 1.1 }}>{name}</div>
             {description ? (
               <div
                 style={{
                   display: "flex",
-                  marginTop: 18,
-                  fontSize: 28,
+                  marginTop: 16,
+                  fontSize: 24,
                   lineHeight: 1.35,
                   color: "rgba(255,255,255,0.9)",
-                  maxWidth: 860,
                 }}
               >
                 {description}
@@ -133,8 +109,14 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             >
               {kicker}
             </div>
-            <div style={{ display: "flex", fontSize: 22, color: "rgba(255,255,255,0.82)" }}>{host}</div>
+            <div style={{ display: "flex", fontSize: 20, color: "rgba(255,255,255,0.82)" }}>{host}</div>
           </div>
+        </div>
+        <div style={{ display: "flex", width: 600, height: 630, background: "#0B6E4F" }}>
+          {banner ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img alt="" src={banner} width={600} height={630} style={{ width: 600, height: 630, objectFit: "cover" }} />
+          ) : null}
         </div>
       </div>
     ),

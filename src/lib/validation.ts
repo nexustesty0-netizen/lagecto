@@ -1,7 +1,7 @@
 export const USERNAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9._]{1,22}[a-zA-Z0-9]$/;
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const SHOP_ID_RE = /^[a-z0-9]+@lg[a-z0-9]+$/i;
-export const PHONE_RE = /^(\+263|0)[0-9]{9}$/;
+export const PHONE_RE = /^\+?[0-9][0-9\s().-]{5,19}$/;
 
 const RESERVED = new Set([
   "admin",
@@ -76,8 +76,10 @@ export function validatePassword(password: string) {
 }
 
 export function validatePhone(value: string) {
-  if (!PHONE_RE.test(String(value || "").trim())) {
-    return "Enter a valid Zimbabwe phone number (for example 0771234567).";
+  const raw = String(value || "").trim();
+  const digits = raw.replace(/\D/g, "");
+  if (!PHONE_RE.test(raw) || digits.length < 7 || digits.length > 15) {
+    return "Enter a valid phone number.";
   }
   return null;
 }

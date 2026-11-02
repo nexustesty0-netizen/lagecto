@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiProfile } from "@/lib/auth/session";
+import { requireApiAdminLevel } from "@/lib/auth/session";
 import { SELF_SERVE_SHOP_CREATION } from "@/lib/platform-flags";
 
 export async function POST(request: Request) {
-  const auth = await requireApiProfile("admin");
+  const auth = await requireApiAdminLevel("super_admin");
   if (!auth.ok) return auth.error;
   const body = await request.json().catch(() => ({}));
   const key = String(body.key || "");

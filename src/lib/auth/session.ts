@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import type { Profile, UserRole } from "@/lib/types";
+import type { Profile, Shop, UserRole } from "@/lib/types";
+import { hasAdminLevel, type AdminRole } from "@/lib/admin-access";
+import { staffCanManage, staffIsOwner, type ShopStaffRole } from "@/lib/shop/staff";
 
 export async function getSessionUser() {
   const supabase = await createServerSupabase();
@@ -51,16 +53,46 @@ export async function requireRole(roles: UserRole | UserRole[]) {
   return profile;
 }
 
-export async function getOwnedShop() {
-  const profile = await requireRole("shop_owner");
+export async function requireAdminLevel(min: AdminRole) {
+  const profile = await requireRole("admin");
+  if (!hasAdminLevel(profile, min)) redirect("/403");
+  return profile;
+}
+
+export async function loadShopForProfile(profile: Profile) {
   const supabase = await createServerSupabase();
-  const { data } = await supabase
-    .from("shops")
-    .select("*")
-    .or(`owner_user_id.eq.${profile.id},owner_email.eq.${profile.email}`)
+  if (profile.role === "shop_owner") {
+    const { data } = await supabase
+      .from("shops")
+      .select("*")
+      .or(`owner_user_id.eq.${profile.id},owner_email.eq.${profile.email}`)
+      .limit(1)
+      .maybeSingle();
+    return { profile, shop: (data as Shop | null) ?? null, staffRole: "owner" as ShopStaffRole };
+  }
+  const { data: assignment } = await supabase
+    .from("shop_staff_assignments")
+    .select("shop_id, role_name")
+    .eq("user_id", profile.id)
+    .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  return { profile, shop: data };
+  if (!assignment?.shop_id) {
+    return { profile, shop: null as Shop | null, staffRole: null as ShopStaffRole | null };
+  }
+  const { data: shop } = await supabase.from("shops").select("*").eq("id", assignment.shop_id).maybeSingle();
+  const role = assignment.role_name === "admin" || assignment.role_name === "manager" || assignment.role_name === "cashier"
+    ? (assignment.role_name as ShopStaffRole)
+    : "cashier";
+  return { profile, shop: (shop as Shop | null) ?? null, staffRole: shop ? role : null };
+}
+
+export async function getOwnedShop() {
+  const profile = await requireUser();
+  const packed = await loadShopForProfile(profile);
+  if (profile.role === "shop_owner") return packed;
+  if (!packed.shop || !packed.staffRole) redirect("/403");
+  return packed;
 }
 
 export async function requireApiProfile(roles?: UserRole | UserRole[]) {
@@ -80,25 +112,46 @@ export async function requireApiProfile(roles?: UserRole | UserRole[]) {
   return { ok: true as const, profile };
 }
 
-export async function requireApiShop() {
-  const auth = await requireApiProfile("shop_owner");
+export async function requireApiAdminLevel(min: AdminRole) {
+  const auth = await requireApiProfile("admin");
   if (!auth.ok) return auth;
-  const supabase = await createServerSupabase();
-  const { data: shop } = await supabase
-    .from("shops")
-    .select("*")
-    .or(`owner_user_id.eq.${auth.profile.id},owner_email.eq.${auth.profile.email}`)
-    .limit(1)
-    .maybeSingle();
-  if (!shop) {
+  if (!hasAdminLevel(auth.profile, min)) {
+    return { ok: false as const, error: NextResponse.json({ error: "You don't have permission." }, { status: 403 }) };
+  }
+  return auth;
+}
+
+export async function requireApiShop() {
+  const auth = await requireApiProfile();
+  if (!auth.ok) return auth;
+  const packed = await loadShopForProfile(auth.profile);
+  if (!packed.shop || !packed.staffRole) {
     return { ok: false as const, error: NextResponse.json({ error: "No shop assigned to this account." }, { status: 403 }) };
   }
-  return { ok: true as const, profile: auth.profile, shop };
+  return { ok: true as const, profile: packed.profile, shop: packed.shop, staffRole: packed.staffRole };
+}
+
+export async function requireApiShopManage() {
+  const auth = await requireApiShop();
+  if (!auth.ok) return auth;
+  if (!staffCanManage(auth.staffRole)) {
+    return { ok: false as const, error: NextResponse.json({ error: "Cashiers cannot do this." }, { status: 403 }) };
+  }
+  return auth;
+}
+
+export async function requireApiShopOwner() {
+  const auth = await requireApiShop();
+  if (!auth.ok) return auth;
+  if (!staffIsOwner(auth.staffRole)) {
+    return { ok: false as const, error: NextResponse.json({ error: "Only the shop owner can do this." }, { status: 403 }) };
+  }
+  return auth;
 }
 
 export async function requireApiShopFeature(feature: string) {
   const { getShopFeatures } = await import("@/lib/entitlements");
-  const auth = await requireApiShop();
+  const auth = await requireApiShopManage();
   if (!auth.ok) return auth;
   const features = await getShopFeatures(auth.shop.id);
   if (!features.has(feature)) {

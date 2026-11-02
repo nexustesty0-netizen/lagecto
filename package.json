@@ -7,14 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/loyalty/promo-math.test.mjs src/lib/support/priority.test.mjs"
+    "test": "node --experimental-strip-types --test src/lib/loyalty/promo-math.test.mjs src/lib/support/priority.test.mjs src/lib/security.test.mjs src/lib/safe-log.test.mjs src/lib/packages.test.mjs src/lib/pricing.test.mjs src/lib/launch.test.mjs src/lib/chat-privacy.test.mjs src/lib/cart-math.test.mjs src/lib/shop/dashboard-stats.test.mjs src/lib/shop/inventory-math.test.mjs src/lib/shop/customers.test.mjs src/lib/shop/pos.test.mjs src/lib/admin/control-centre.test.mjs src/lib/settings-nav.test.mjs src/lib/app-nav.test.mjs src/lib/chart-math.test.mjs src/lib/production-readiness.test.mjs src/lib/storefront/template.test.mjs src/lib/storefront/catalog-display.test.mjs src/lib/notifications.test.mjs",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^1.42.0",
-    "next": "16.3.4",
+    "next": "16.4.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -24,7 +25,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.4",
+    "eslint-config-next": "16.4.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

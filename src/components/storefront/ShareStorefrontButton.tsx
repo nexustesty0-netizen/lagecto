@@ -56,7 +56,7 @@ export function ShareStorefrontButton({
         onClick={() => setOpen((current) => !current)}
         className={
           compact
-            ? "grid h-11 w-11 place-items-center rounded-full border"
+            ? "sf-icon-btn"
             : "min-h-11 w-full rounded-full border bg-white px-4 py-2 text-sm font-semibold text-[#1E1E1E] sm:w-auto"
         }
         aria-label={`Share ${shopName}`}

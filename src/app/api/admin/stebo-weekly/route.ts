@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireApiProfile } from "@/lib/auth/session";
+import { requireApiAdminLevel } from "@/lib/auth/session";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
 export async function POST() {
-  const auth = await requireApiProfile("admin");
+  const auth = await requireApiAdminLevel("admin");
   if (!auth.ok) return auth.error;
   const admin = createServiceSupabase();
   const { data, error } = await admin.rpc("generate_stebo_weekly_reports");

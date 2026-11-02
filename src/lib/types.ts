@@ -15,7 +15,7 @@ export type Profile = {
   address: string | null;
   last_login_at: string | null;
   created_at: string;
-  admin_role?: "super_admin" | "staff" | "clerk" | "manager" | null;
+  admin_role?: "super_admin" | "admin" | "manager" | "staff" | "clerk" | null;
 };
 
 export type Shop = {
@@ -62,6 +62,8 @@ export type Shop = {
   receipt_customization?: Record<string, unknown> | null;
   meta_title?: string | null;
   meta_description?: string | null;
+  privacy_policy?: string | null;
+  terms_of_service?: string | null;
   created_at: string;
 };
 
@@ -81,7 +83,9 @@ export type Product = {
   duration?: string | null;
   is_available: boolean;
   is_popular: boolean;
+  availability?: "available" | "on_order" | null;
   video_url?: string | null;
+  icon?: string | null;
 };
 
 export type CartItem = {
@@ -93,6 +97,7 @@ export type CartItem = {
   quantity: number;
   image?: string | null;
   type?: "product" | "service";
+  availability?: "available" | "on_order" | null;
 };
 
 export type OrderStatus =

@@ -1,25 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Alert, PasswordField, PasswordMeter, PrimaryButton, TextField } from "@/components/ui/forms";
+import { AuthAlert, AuthInput, AuthSubmit } from "@/components/auth/AuthFields";
 
 export function SignupForm() {
-  const [fullName, setFullName] = useState("");
+  const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (loading) return;
     setError("");
-    setSuccess("");
+    if (!agreed) {
+      setError("Please agree to the Terms and Conditions.");
+      return;
+    }
     if (password !== confirm) {
       setError("Passwords do not match.");
       return;
@@ -29,18 +34,18 @@ export function SignupForm() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, username, phone, password }),
+        body: JSON.stringify({ firstName, lastName, email, phone, password }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Unable to create this account.");
         return;
       }
-      setSuccess(
-        data.needsEmailVerification
-          ? "Account created. Check your email to verify, then sign in."
-          : "Account created. You can now sign in.",
-      );
+      if (data.needsEmailVerification) {
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      router.push("/login");
     } catch {
       setError("Network error. Try again.");
     } finally {
@@ -48,42 +53,37 @@ export function SignupForm() {
     }
   }
 
-  if (success) {
-    return (
-      <div className="grid gap-4">
-        <Alert tone="success">{success}</Alert>
-        <Link href="/login" className="h-12 rounded-2xl bg-[#0B6E4F] px-4 text-center text-sm font-semibold leading-[48px] text-white">
-          Continue to sign in
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <>
-      <form onSubmit={onSubmit} className="grid gap-4">
-        <TextField label="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required autoComplete="name" />
-        <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-        <TextField label="Username" value={username} onChange={(e) => setUsername(e.target.value)} required autoComplete="username" />
-        <TextField label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="0771234567" autoComplete="tel" />
-        <PasswordField label="Password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
-        <PasswordMeter password={password} />
-        <PasswordField label="Confirm password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required autoComplete="new-password" />
-        {error ? <Alert>{error}</Alert> : null}
-        <PrimaryButton type="submit" loading={loading}>
+      <h1 className="auth-title">Create account</h1>
+      <p className="auth-subtitle">Join LaGecto to shop local businesses.</p>
+      <form onSubmit={onSubmit} className="mt-6 grid gap-3.5">
+        <div className="grid gap-3.5 sm:grid-cols-2">
+          <AuthInput label="First name" icon="user" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" required />
+          <AuthInput label="Last name" icon="user" value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" required />
+        </div>
+        <AuthInput label="Email address" icon="mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+        <AuthInput label="Phone number" icon="phone" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" required />
+        <AuthInput label="Password" icon="lock" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
+        <AuthInput label="Confirm password" icon="lock" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="auth-check mt-0.5" />
+          <span>
+            I agree to the{" "}
+            <Link href="/support/terms" className="auth-link-strong">
+              Terms and Conditions
+            </Link>
+          </span>
+        </label>
+        {error ? <AuthAlert>{error}</AuthAlert> : null}
+        <AuthSubmit type="submit" loading={loading}>
           {loading ? "Creating…" : "Create account"}
-        </PrimaryButton>
+        </AuthSubmit>
       </form>
-      <p className="mt-5 text-center text-sm text-[var(--lagecto-muted)]">
+      <p className="auth-footer">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-[#0B6E4F]">
+        <Link href="/login" className="auth-link-strong">
           Sign in
-        </Link>
-      </p>
-      <p className="mt-3 text-center text-sm text-[var(--lagecto-muted)]">
-        Opening a business?{" "}
-        <Link href="/register-shop" className="font-medium text-[#0B6E4F]">
-          Register a shop
         </Link>
       </p>
     </>

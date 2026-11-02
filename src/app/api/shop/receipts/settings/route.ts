@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiShop } from "@/lib/auth/session";
+import { requireApiShopOwner } from "@/lib/auth/session";
 import { contrastRatio, isHexColor, normalizeHex } from "@/lib/storefront/theme";
 import { isReceiptTemplate, RECEIPT_HEADER_LAYOUTS, RECEIPT_SIZES } from "@/lib/receipts";
 
 export async function POST(request: Request) {
-  const auth = await requireApiShop();
+  const auth = await requireApiShopOwner();
   if (!auth.ok) return auth.error;
   const body = await request.json().catch(() => ({}));
   const template = isReceiptTemplate(body.template) ? body.template : "classic";

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatDate } from "@/lib/format";
-import { validateImageUrl, validateVideoUrl } from "@/lib/media";
+import { mediaFrameClass, validateImageUrl, validateVideoUrl } from "@/lib/media";
 import { MediaPreview } from "@/components/media/MediaPreview";
 
 type MediaType = "none" | "image" | "video";
@@ -66,7 +66,7 @@ export function BlogManager({ shopId, posts }: { shopId: string; posts: Post[] }
     }
     if (mediaType === "video") {
       if (!url) {
-        setError("Paste a YouTube, Instagram, TikTok, Facebook, or HTTPS video URL.");
+        setError("Paste a Facebook, Instagram, YouTube, or TikTok URL.");
         return;
       }
       const result = validateVideoUrl(url);
@@ -114,6 +114,9 @@ export function BlogManager({ shopId, posts }: { shopId: string; posts: Post[] }
 
   return (
     <div className="grid gap-4">
+      <p className="text-sm text-[var(--lagecto-muted)]">
+        Use an image URL or a Facebook, Instagram, YouTube, or TikTok video URL. Photos from this device are not accepted.
+      </p>
       <button type="button" onClick={openNew} className="w-fit rounded-full bg-[#0B6E4F] px-4 py-2 text-sm font-semibold text-white">
         + New post
       </button>
@@ -158,12 +161,14 @@ export function BlogManager({ shopId, posts }: { shopId: string; posts: Post[] }
               <input
                 value={mediaUrl}
                 onChange={(event) => setMediaUrl(event.target.value)}
-                placeholder={mediaType === "image" ? "https://example.com/image.jpg" : "https://youtube.com/watch?v=…"}
+                placeholder={mediaType === "image" ? "https://example.com/image.jpg" : "Facebook, Instagram, YouTube, or TikTok URL"}
                 className="rounded-xl border px-3 py-2"
               />
             </label>
           ) : null}
-          {mediaType !== "none" && mediaUrl ? <MediaPreview url={mediaUrl} title={editing.title || "Preview"} /> : null}
+          {mediaType !== "none" && mediaUrl ? (
+            <MediaPreview url={mediaUrl} title={editing.title || "Preview"} playing className={mediaFrameClass(mediaUrl)} />
+          ) : null}
           <select name="status" defaultValue={editing.status || "draft"} className="rounded-xl border px-3 py-2">
             <option value="draft">Draft</option>
             <option value="published">Published</option>

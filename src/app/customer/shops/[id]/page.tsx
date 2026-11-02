@@ -9,6 +9,7 @@ import { BookingForm, RequestForm, SaveShopButton } from "@/components/customer/
 import { MessageShopButton } from "@/components/chat/MessageShopButton";
 import { storefrontPath } from "@/lib/storefront/paths";
 import { VerifiedBadge } from "@/components/shop/VerifiedBadge";
+import { getPublicShop, getPublicShopProducts } from "@/lib/public-catalog";
 
 export default async function ShopDetailsPage({
   params,
@@ -17,16 +18,16 @@ export default async function ShopDetailsPage({
 }) {
   const { id } = await params;
   const profile = await requireRole("customer");
-  const supabase = await createServerSupabase();
-  const { data: shop } = await supabase.from("shops").select("*").eq("id", id).eq("status", "active").maybeSingle();
+  const shop = await getPublicShop(id);
   if (!shop) notFound();
   if (shop.slug) redirect(storefrontPath(shop.slug));
-  const [{ data: products }, { data: reviews }, { data: saved }] = await Promise.all([
-    supabase.from("products").select("*").eq("shop_id", id).eq("is_available", true).order("name"),
-    supabase.from("ratings").select("id, rating, review, reviewer_name, created_at").eq("shop_id", id).eq("is_hidden", false).order("created_at", { ascending: false }).limit(10),
-    supabase.from("saved_shops").select("shop_id").eq("user_id", profile.id).eq("shop_id", id).maybeSingle(),
+  const supabase = await createServerSupabase();
+  const [products, { data: reviews }, { data: saved }] = await Promise.all([
+    getPublicShopProducts(shop.id),
+    supabase.from("ratings").select("id, rating, review, reviewer_name, created_at").eq("shop_id", shop.id).eq("is_hidden", false).order("created_at", { ascending: false }).limit(10),
+    supabase.from("saved_shops").select("shop_id").eq("user_id", profile.id).eq("shop_id", shop.id).maybeSingle(),
   ]);
-  const services = (products || []).filter((row) => row.type === "service").map((row) => ({ id: row.id, name: row.name }));
+  const services = products.filter((row) => row.type === "service").map((row) => ({ id: row.id, name: row.name }));
 
   return (
     <>
@@ -49,7 +50,7 @@ export default async function ShopDetailsPage({
         </p>
       </div>
       <h2 className="mb-3 text-lg font-semibold">Products & services</h2>
-      {!products?.length ? (
+      {!products.length ? (
         <EmptyState title="Nothing listed yet" body="This shop has not published products or services." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -66,9 +67,21 @@ export default async function ShopDetailsPage({
                   name: product.name,
                   price: Number(product.price),
                   image: product.image,
-                  type: product.type,
+                  type: product.type === "service" ? "service" : "product",
+                  availability: product.availability === "on_order" ? "on_order" : "available",
+                  stock: product.stock,
                 }}
               />
+              <div className="mt-3">
+                <MessageShopButton
+                  shopId={shop.id}
+                  shopName={shop.name}
+                  productId={product.id}
+                  productName={product.name}
+                  loggedIn
+                  nextPath={`/customer/shops/${shop.id}`}
+                />
+              </div>
             </article>
           ))}
         </div>

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { MediaPreview } from "@/components/media/MediaPreview";
-import { isSocialMediaUrl, parseMediaEmbed } from "@/lib/media";
+import { ImageLightbox } from "@/components/media/MediaClick";
+import { parseMediaEmbed } from "@/lib/media";
+import { isPlaceholderCover } from "@/lib/placeholder-cover";
 
 export function ProductGallery({ images, name }: { images: string[]; name: string }) {
   const [index, setIndex] = useState(0);
@@ -10,14 +12,14 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
   const current = images[index] || images[0];
   if (!current) return null;
   const parsed = parseMediaEmbed(current);
-  const canZoom = !isSocialMediaUrl(current) && parsed?.media === "image";
+  const canZoom = !isPlaceholderCover(current) && parsed?.provider === "file" && parsed.media === "image";
 
   return (
     <div>
-      <div className="relative aspect-square w-full overflow-hidden rounded-[28px] bg-black/5">
-        <MediaPreview url={current} title={name} className="absolute inset-0 h-full w-full" imgClassName="h-full w-full object-contain" />
+      <div className="relative aspect-square w-full overflow-hidden rounded-[var(--lg-radius)] bg-black/5">
+        <MediaPreview url={current} title={name} playing className="absolute inset-0 h-full w-full" imgClassName="h-full w-full object-contain" />
         {canZoom ? (
-          <button type="button" className="absolute inset-0 z-[1]" onClick={() => setZoomed(true)} aria-label={`Enlarge ${name}`} />
+          <button type="button" className="absolute inset-0 z-[1]" onClick={() => setZoomed(true)} aria-label={`View ${name}`} />
         ) : null}
       </div>
       {images.length > 1 ? (
@@ -29,16 +31,12 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
               onClick={() => setIndex(i)}
               className={`h-16 w-16 shrink-0 overflow-hidden rounded-2xl ring-2 ${i === index ? "ring-[var(--sf-primary)]" : "ring-transparent"}`}
             >
-              <MediaPreview url={src} title="" className="h-full w-full" interactive={false} />
+              <MediaPreview url={src} title="" className="h-full w-full" interactive={false} fit="cover" />
             </button>
           ))}
         </div>
       ) : null}
-      {zoomed ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4" onClick={() => setZoomed(false)}>
-          <MediaPreview url={current} title={name} className="max-h-full max-w-full" imgClassName="max-h-full max-w-full object-contain" />
-        </div>
-      ) : null}
+      {zoomed ? <ImageLightbox src={current} alt={name} onClose={() => setZoomed(false)} /> : null}
     </div>
   );
 }

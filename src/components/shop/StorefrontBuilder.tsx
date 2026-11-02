@@ -7,6 +7,7 @@ import { MediaField } from "@/components/media/MediaField";
 import { StorefrontLogo, StorefrontHeroBackdrop } from "@/components/storefront/StorefrontChrome";
 import { resolveStorefrontTheme, isHexColor } from "@/lib/storefront/theme";
 import { shopHref } from "@/lib/storefront/paths";
+import { validateHeroUrl } from "@/lib/media";
 
 type Config = {
   hero_title: string | null;
@@ -19,6 +20,12 @@ type Config = {
   accent_color: string | null;
   background_color: string | null;
   is_published: boolean | null;
+  layout_template?: string | null;
+  hero_home_url?: string | null;
+  hero_about_url?: string | null;
+  hero_services_url?: string | null;
+  hero_promotions_url?: string | null;
+  hero_contact_url?: string | null;
 };
 
 export function StorefrontBuilder({
@@ -32,6 +39,7 @@ export function StorefrontBuilder({
     about: string | null;
     logo_url: string | null;
     banner_url: string | null;
+    category?: string | null;
     meta_title?: string | null;
     meta_description?: string | null;
   };
@@ -46,10 +54,23 @@ export function StorefrontBuilder({
   const [secondary, setSecondary] = useState(config?.secondary_color || "#2E8B57");
   const [accent, setAccent] = useState(config?.accent_color || "#D4AF37");
   const [background, setBackground] = useState(config?.background_color || "#FFFDF8");
+  const [heroHome, setHeroHome] = useState<string | null>(config?.hero_home_url || null);
+  const [heroAbout, setHeroAbout] = useState<string | null>(config?.hero_about_url || null);
+  const [heroServices, setHeroServices] = useState<string | null>(config?.hero_services_url || null);
+  const [heroPromotions, setHeroPromotions] = useState<string | null>(config?.hero_promotions_url || null);
+  const [heroContact, setHeroContact] = useState<string | null>(config?.hero_contact_url || null);
   const theme = useMemo(
     () => resolveStorefrontTheme({ primary, secondary, accent, background }),
     [primary, secondary, accent, background],
   );
+
+  function heroUrl(value: string | null) {
+    const raw = String(value || "").trim();
+    if (!raw) return { ok: true as const, href: null };
+    const parsed = validateHeroUrl(raw);
+    if (!parsed.ok) return parsed;
+    return { ok: true as const, href: parsed.href };
+  }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,7 +80,41 @@ export function StorefrontBuilder({
       return;
     }
     const supabase = createBrowserSupabase();
-    const [{ error: shopError }, { error: configError }] = await Promise.all([
+    const baseConfig = {
+      shop_id: shop.id,
+      hero_title: String(form.get("hero_title") || ""),
+      hero_subtitle: String(form.get("hero_subtitle") || ""),
+      tagline: String(form.get("tagline") || ""),
+      cta_label: String(form.get("cta_label") || "Shop now"),
+      cover_position: String(form.get("cover_position") || "center"),
+      primary_color: theme.primary,
+      secondary_color: theme.secondary,
+      accent_color: theme.accent,
+      background_color: theme.background,
+      is_published: form.get("is_published") === "on",
+      updated_at: new Date().toISOString(),
+    };
+    const heroes = {
+      hero_home_url: heroUrl(heroHome),
+      hero_about_url: heroUrl(heroAbout),
+      hero_services_url: heroUrl(heroServices),
+      hero_promotions_url: heroUrl(heroPromotions),
+      hero_contact_url: heroUrl(heroContact),
+    };
+    const heroError = Object.values(heroes).find((hero) => !hero.ok);
+    if (heroError && !heroError.ok) {
+      setMessage(heroError.error);
+      return;
+    }
+    const layoutConfig = {
+      layout_template: "tech",
+      hero_home_url: heroes.hero_home_url.ok ? heroes.hero_home_url.href : null,
+      hero_about_url: heroes.hero_about_url.ok ? heroes.hero_about_url.href : null,
+      hero_services_url: heroes.hero_services_url.ok ? heroes.hero_services_url.href : null,
+      hero_promotions_url: heroes.hero_promotions_url.ok ? heroes.hero_promotions_url.href : null,
+      hero_contact_url: heroes.hero_contact_url.ok ? heroes.hero_contact_url.href : null,
+    };
+    const [{ error: shopError }, configResult] = await Promise.all([
       supabase
         .from("shops")
         .update({
@@ -71,22 +126,22 @@ export function StorefrontBuilder({
           meta_description: String(form.get("meta_description") || ""),
         })
         .eq("id", shop.id),
-      supabase.from("shop_storefront_config").upsert({
-        shop_id: shop.id,
-        hero_title: String(form.get("hero_title") || ""),
-        hero_subtitle: String(form.get("hero_subtitle") || ""),
-        tagline: String(form.get("tagline") || ""),
-        cta_label: String(form.get("cta_label") || "Shop now"),
-        cover_position: String(form.get("cover_position") || "center"),
-        primary_color: theme.primary,
-        secondary_color: theme.secondary,
-        accent_color: theme.accent,
-        background_color: theme.background,
-        is_published: form.get("is_published") === "on",
-        updated_at: new Date().toISOString(),
-      }),
+      supabase.from("shop_storefront_config").upsert({ ...baseConfig, ...layoutConfig }),
     ]);
-    setMessage(shopError || configError ? "Unable to save storefront." : "Storefront saved.");
+    let configError = configResult.error;
+    let layoutPending = false;
+    if (configError) {
+      const retry = await supabase.from("shop_storefront_config").upsert(baseConfig);
+      configError = retry.error;
+      layoutPending = !retry.error;
+    }
+    setMessage(
+      shopError || configError
+        ? "Unable to save storefront."
+        : layoutPending
+          ? "Storefront saved. Apply the latest storefront SQL to keep layout and hero settings."
+          : "Storefront saved.",
+    );
     router.refresh();
   }
 
@@ -110,6 +165,22 @@ export function StorefrontBuilder({
               <option value="bottom">Bottom</option>
             </select>
           </label>
+        </section>
+        <section className="lg-card grid gap-4 p-5">
+          <h2 className="font-semibold">Storefront layout</h2>
+          <p className="text-sm text-[var(--lagecto-muted)]">
+            Every shop uses the same premium storefront. Brand colors below change your shop only. Page heroes accept an image URL or a Facebook, Instagram, YouTube, or TikTok video URL. Logo and cover still use the gallery upload above.
+          </p>
+          <HeroUrlField
+            label="Home hero URL"
+            value={heroHome}
+            onChange={setHeroHome}
+            hint="Leave empty to use the shop cover. Image URL, or a Facebook, Instagram, YouTube, or TikTok video URL."
+          />
+          <HeroUrlField label="About hero URL" value={heroAbout} onChange={setHeroAbout} />
+          <HeroUrlField label="Services hero URL" value={heroServices} onChange={setHeroServices} />
+          <HeroUrlField label="Promotions hero URL" value={heroPromotions} onChange={setHeroPromotions} />
+          <HeroUrlField label="Contact hero URL" value={heroContact} onChange={setHeroContact} />
         </section>
         <section className="lg-card grid gap-4 p-5">
           <h2 className="font-semibold">Brand colors</h2>
@@ -150,19 +221,23 @@ export function StorefrontBuilder({
       </div>
       <aside className="lg:sticky lg:top-24">
         <div className="overflow-hidden rounded-[28px] border shadow-[var(--lg-shadow)]" style={theme.cssVars}>
-          <div className="relative h-56 overflow-hidden" style={{ background: theme.primary }}>
-            <StorefrontHeroBackdrop bannerUrl={cover} coverPosition={coverPosition} />
-            <div className="absolute left-4 top-4">
-              <StorefrontLogo shop={{ name: shop.name, logo_url: logo }} size={36} className="shadow-md ring-2 ring-white/90" />
+          <div className="overflow-hidden" style={{ background: theme.background, color: theme.text }}>
+            <div className="relative h-40 overflow-hidden" style={{ background: theme.primary }}>
+              <StorefrontHeroBackdrop bannerUrl={cover} coverPosition={coverPosition} category={shop.category} />
             </div>
-            <div className="absolute bottom-4 left-4 right-4 text-white">
-              <p className="text-xl font-semibold">{shop.name}</p>
-              <p className="text-sm text-white/85">{cover ? "Your banner, with the shop logo as a small icon" : "Upload a cover image to show it here"}</p>
+            <div className="p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <StorefrontLogo shop={{ name: shop.name, logo_url: logo }} size={36} className="shadow-md ring-1 ring-black/5" />
+                <p className="text-lg font-semibold">{shop.name}</p>
+              </div>
+              <p className="text-sm" style={{ color: theme.muted }}>
+                {cover ? "Your banner covers the top of the storefront." : "Without a banner, the shop category icon is shown."}
+              </p>
               <div className="mt-3 flex gap-2">
-                <span className="rounded-full px-4 py-2 text-sm font-semibold text-white" style={{ background: "#04180f" }}>
+                <span className="rounded-full px-4 py-2 text-sm font-semibold text-white" style={{ background: theme.primary }}>
                   Shop now
                 </span>
-                <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold" style={{ color: theme.primary }}>
+                <span className="rounded-full bg-white px-4 py-2 text-sm font-semibold ring-1 ring-black/10" style={{ color: theme.primary }}>
                   Contact
                 </span>
               </div>
@@ -188,5 +263,30 @@ export function StorefrontBuilder({
         ) : null}
       </aside>
     </form>
+  );
+}
+
+function HeroUrlField({
+  label,
+  value,
+  onChange,
+  hint = "Image URL, or a Facebook, Instagram, YouTube, or TikTok video URL.",
+}: {
+  label: string;
+  value: string | null;
+  onChange: (url: string | null) => void;
+  hint?: string;
+}) {
+  return (
+    <label className="grid gap-1 text-sm">
+      {label}
+      <input
+        value={value || ""}
+        onChange={(event) => onChange(event.target.value.trim() || null)}
+        placeholder="https://"
+        className="rounded-xl border px-3 py-2"
+      />
+      <span className="text-xs text-[var(--lagecto-muted)]">{hint}</span>
+    </label>
   );
 }

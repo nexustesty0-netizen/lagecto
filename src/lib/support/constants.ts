@@ -143,5 +143,6 @@ export function supportNav(basePath: string) {
     { href: `${b}/about`, label: "About" },
     { href: `${b}/terms`, label: "Terms" },
     { href: `${b}/privacy`, label: "Privacy" },
+    { href: `${b}/rules`, label: "Marketplace rules" },
   ];
 }

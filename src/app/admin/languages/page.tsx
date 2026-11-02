@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader, Card } from "@/components/ui/primitives";
 
 const STRINGS = [
@@ -11,7 +11,7 @@ const STRINGS = [
 ];
 
 export default async function LanguagesPage() {
-  await requireRole("admin");
+  await requireAdminLevel("super_admin");
   return (
     <>
       <PageHeader title="Languages" subtitle="English and isiNdebele strings used across LaGecto." />

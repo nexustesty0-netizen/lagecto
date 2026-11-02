@@ -137,7 +137,7 @@ export function NewsEditor({ article }: { article?: Article }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={cover} alt="" className="h-40 w-full rounded-2xl object-cover" />
         ) : null}
-        <input name="video" defaultValue={article?.video_url || ""} placeholder="Video URL (optional, HTTPS)" className="rounded-xl border px-3 py-2" />
+        <input name="video" defaultValue={article?.video_url || ""} placeholder="Facebook, Instagram, YouTube, or TikTok URL (optional)" className="rounded-xl border px-3 py-2" />
         <div className="grid gap-3 sm:grid-cols-2">
           <select name="audience" defaultValue={article?.audience || "all"} className="rounded-xl border px-3 py-2">
             <option value="all">All</option>

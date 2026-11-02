@@ -98,6 +98,8 @@ export default async function PublicShopPage({
                     price: Number(product.price),
                     image: product.image,
                     type: product.type === "service" ? "service" : "product",
+                    availability: product.availability === "on_order" ? "on_order" : "available",
+                    stock: product.stock,
                   }}
                 />
               </div>

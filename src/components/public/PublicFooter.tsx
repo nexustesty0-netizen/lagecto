@@ -6,7 +6,7 @@ export function PublicFooter() {
   return (
     <footer className="no-print px-3 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-2 lg:pb-4">
       <div
-        className="fixed inset-x-3 z-30 mx-auto flex max-w-3xl items-center justify-between gap-1 rounded-[28px] border border-[var(--lagecto-border)] bg-[color-mix(in_srgb,var(--lagecto-ivory)_92%,transparent)] px-2 py-1.5 shadow-[0_16px_40px_rgba(18,36,28,0.12)] backdrop-blur-xl lg:static lg:px-3 lg:py-2"
+        className="fixed inset-x-3 z-30 mx-auto flex max-w-3xl items-center justify-between gap-1 rounded-[var(--lg-radius)] border border-[var(--lagecto-border)] bg-[var(--lagecto-ivory)] px-2 py-1.5 lg:static lg:px-3 lg:py-2"
         style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         <Link href="/" className="grid min-h-11 flex-1 place-items-center gap-1 rounded-2xl text-[11px] font-medium text-[var(--lagecto-muted)]">
@@ -30,9 +30,24 @@ export function PublicFooter() {
           Sign in
         </Link>
       </div>
-      <p className="mt-3 hidden text-center text-[11px] text-[var(--lagecto-muted)] lg:block">
-        {BRAND.name} · {BRAND.location} · {CONTACT.phoneDisplay}
-      </p>
+      <div className="mt-3 hidden flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-[11px] text-[var(--lagecto-muted)] lg:flex">
+        <span>
+          {BRAND.name} · {BRAND.location} · {CONTACT.phoneDisplay}
+        </span>
+        <Link href="/support/terms" className="underline-offset-2 hover:underline">
+          Terms
+        </Link>
+        <Link href="/support/privacy" className="underline-offset-2 hover:underline">
+          Privacy
+        </Link>
+        <Link href="/support/rules" className="underline-offset-2 hover:underline">
+          Marketplace rules
+        </Link>
+        <Link href="/contact" className="underline-offset-2 hover:underline">
+          Contact
+        </Link>
+        <span>Session cookies keep you signed in. See Privacy.</span>
+      </div>
     </footer>
   );
 }

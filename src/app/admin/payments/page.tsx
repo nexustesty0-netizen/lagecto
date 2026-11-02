@@ -1,11 +1,11 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader, EmptyState, StatusBadge } from "@/components/ui/primitives";
 import { PaymentsTable, type PaymentRow } from "@/components/payments/PaymentsTable";
 import { AdminRefundCompleteForm } from "@/components/admin/AdminRefundCompleteForm";
 
 export default async function AdminPaymentsPage() {
-  await requireRole("admin");
+  await requireAdminLevel("admin");
   const supabase = await createServerSupabase();
   const [{ data: payments }, { data: refunds }, { data: reviews }] = await Promise.all([
     supabase

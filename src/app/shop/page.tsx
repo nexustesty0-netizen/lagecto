@@ -1,123 +1,272 @@
 import Link from "next/link";
-import { createServerSupabase } from "@/lib/supabase/server";
+import {
+  Boxes,
+  ClipboardList,
+  CreditCard,
+  MessageCircle,
+  ShoppingBag,
+  Users,
+} from "lucide-react";
 import { loadOwnedShopWithFeatures } from "@/lib/entitlements";
 import { getShopDashboardStats, type DashboardPeriod } from "@/lib/shop/dashboard-stats";
-import { PageHeader, StatCard, EmptyState, ActionTile } from "@/components/ui/primitives";
+import { loadShopHome } from "@/lib/shop/home";
+import { DashboardHero, PeriodChips, StatCard, EmptyState, StatusBadge } from "@/components/ui/primitives";
 import { ShopStatusCard } from "@/components/shop/ShopStatusCard";
-import { ProfitLossPanel } from "@/components/shop/ProfitLossPanel";
-import { money, formatDateTime } from "@/lib/format";
+import { SalesTrendChart } from "@/components/shop/SalesTrendChart";
+import { AppShortcut } from "@/components/shop/AppShortcut";
+import { formatDateTime, money } from "@/lib/format";
+import { PACKAGE_META } from "@/lib/packages";
+import { staffIsOwner, staffPathAllowed } from "@/lib/shop/staff";
+
+const PERIODS: Array<[string, string]> = [
+  ["current", "Current"],
+  ["today", "Today"],
+  ["yesterday", "Yesterday"],
+  ["week", "Week"],
+  ["last_week", "Last week"],
+  ["month", "Month"],
+  ["last_month", "Last month"],
+  ["year", "Year"],
+];
+
+const SHORTCUTS = [
+  { href: "/shop/pos", label: "POS", icon: <CreditCard size={14} /> },
+  { href: "/shop/orders", label: "Orders", icon: <ClipboardList size={14} /> },
+  { href: "/shop/products", label: "Products", icon: <ShoppingBag size={14} /> },
+  { href: "/shop/inventory", label: "Stock", icon: <Boxes size={14} /> },
+  { href: "/shop/customers", label: "Customers", icon: <Users size={14} /> },
+  { href: "/shop/chat", label: "Messages", icon: <MessageCircle size={14} /> },
+];
 
 export default async function ShopDashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ period?: string; from?: string; to?: string }>;
 }) {
-  const { shop, subscription, features } = await loadOwnedShopWithFeatures();
+  const { shop, profile, subscription, staffRole } = await loadOwnedShopWithFeatures();
   if (!shop) return null;
   const { period, from, to } = await searchParams;
   const selected = (period as DashboardPeriod) || "current";
-  const stats = await getShopDashboardStats(shop.id, {
-    period: selected,
-    from,
-    to,
-  });
-  const supabase = await createServerSupabase();
-  const [{ data: recentSales }, { data: recentNotes }, { data: chats }, { data: loyalty }] = await Promise.all([
-    supabase.from("sales").select("id, total, sale_date, sale_number").eq("shop_id", shop.id).eq("status", "completed").order("sale_date", { ascending: false }).limit(5),
-    supabase.from("shop_notifications").select("id, title, created_at").eq("shop_id", shop.id).eq("is_read", false).order("created_at", { ascending: false }).limit(5),
-    supabase.from("chat_conversations").select("id").eq("shop_id", shop.id),
-    supabase.rpc("loyalty_analytics_shop", { p_shop_id: shop.id }),
+  const [stats, home] = await Promise.all([
+    getShopDashboardStats(shop.id, { period: selected, from, to }),
+    loadShopHome(shop.id, profile.id),
   ]);
+  const plan = PACKAGE_META[subscription.packageKey]?.name || "Free";
+  const shortcuts = SHORTCUTS.filter((item) => {
+    if (!staffPathAllowed(staffRole, item.href)) return false;
+    if (shop.provider_type === "services" && (item.href === "/shop/products" || item.href === "/shop/inventory")) return false;
+    return true;
+  });
+  const canSales = staffPathAllowed(staffRole, "/shop/sales");
+  const canChat = staffPathAllowed(staffRole, "/shop/chat");
+  const canInventory = staffPathAllowed(staffRole, "/shop/inventory") && shop.provider_type !== "services";
+  const canRequests = staffPathAllowed(staffRole, "/shop/service-requests") && shop.provider_type !== "products";
 
   return (
     <>
-      <PageHeader title={shop.name} subtitle="A live operating view of this shop — every figure comes from recorded activity." />
-      <div className="mb-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <ShopStatusCard subscription={subscription} />
-        <article className="os-surface">
-          <p className="os-kicker">Shop profile</p>
-          <p className="mt-2 font-semibold">{shop.name}</p>
-          <p className="mt-1 text-sm text-[var(--lagecto-muted)]">{shop.address || "Add an address in Settings"}</p>
-          <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-[#0B6E4F]">
-            <Link href="/shop/settings">Edit profile</Link>
-            <Link href="/shop/storefront">Storefront</Link>
-            <Link href="/shop/chat">Messages</Link>
-          </div>
-        </article>
-      </div>
-      <div className="mb-6 flex flex-wrap gap-2">
-        {[
-          ["current", "Current period"],
-          ["today", "Today"],
-          ["yesterday", "Yesterday"],
-          ["week", "This week"],
-          ["last_week", "Last week"],
-          ["month", "This month"],
-          ["last_month", "Last month"],
-          ["year", "This year"],
-        ].map(([value, label]) => (
-          <Link
-            key={value}
-            href={value === "current" ? "/shop" : `/shop?period=${value}`}
-            className={`rounded-full px-4 py-2 text-sm ${selected === value ? "bg-[#0B6E4F] text-white" : "border bg-white"}`}
-          >
-            {label}
-          </Link>
-        ))}
-      </div>
+      <DashboardHero
+        kicker={plan}
+        title={shop.name}
+        subtitle="Sales, stock and orders for this shop only."
+        image={shop.banner_url || "/visuals/login-hero.png"}
+      />
+      <PeriodChips selected={selected} options={PERIODS} hrefFor={(value) => (value === "current" ? "/shop" : `/shop?period=${value}`)} />
       {!stats ? (
         <EmptyState title="No financial period" body="A period is created automatically when the shop is created." />
       ) : (
-        <>
-          <ProfitLossPanel stats={stats} />
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Orders pending" value={String(stats.pending_orders)} />
-            <StatCard label="Orders completed" value={String(stats.completed_orders)} />
-            <StatCard label="Low stock" value={String(stats.low_stock)} hint={`${stats.inventory_units} units on hand`} />
-            <StatCard label="Employees" value={String(stats.employee_count)} />
-            <StatCard label="Customers" value={String(stats.customers)} />
-            <StatCard label="Unread alerts" value={String(recentNotes?.length || 0)} />
-            <StatCard label="Conversations" value={String(chats?.length || 0)} />
-            <StatCard label="Refunds" value={String(stats.completed_refunds)} hint={money(stats.refunded_volume)} />
-            <StatCard label="Loyal customers" value={String(loyalty?.loyal_customers || 0)} hint={`${loyalty?.rewards_redeemed || 0} rewards redeemed`} />
-          </div>
-        </>
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <StatCard tone="dark" label="Sales" value={money(stats.revenue)} hint={selected === "current" ? "Completed sales this period" : "Completed sales in this range"} />
+          <StatCard tone={stats.result === "loss" ? "gold" : "green"} label="Result" value={money(stats.profit)} hint={stats.calculation_label} />
+          <StatCard label="Products" value={String(stats.products)} />
+          <StatCard label="Pending orders" value={String(home.pendingOrderCount || stats.pending_orders)} hint="WhatsApp checkouts waiting for confirmation" />
+        </div>
       )}
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <section className="os-surface">
-          <p className="os-kicker">Recent sales</p>
-          <ul className="mt-3 grid gap-2 text-sm">
-            {(recentSales || []).map((sale) => (
-              <li key={sale.id} className="flex justify-between gap-3">
-                <span>{sale.sale_number || "Sale"}</span>
-                <span>
-                  {money(sale.total)} · {formatDateTime(sale.sale_date)}
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <StatCard label="Low stock" value={String(home.lowStock.length || stats?.low_stock || 0)} />
+        <StatCard label="Out of stock" value={String(home.outOfStock)} />
+        <StatCard label="Open enquiries" value={String(home.enquiries.length)} />
+        <StatCard label="Unread messages" value={String(home.unreadMessages)} />
+      </div>
+      <div className="mb-4">
+        <SalesTrendChart series={home.series} />
+      </div>
+      {shortcuts.length ? (
+        <section className="lg-card mb-4 p-2">
+          <p className="px-2 pt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--lagecto-muted)]">Shortcuts</p>
+          <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
+            {shortcuts.map((item) => (
+              <AppShortcut key={item.href} href={item.href} label={item.label} icon={item.icon} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <section className="lg-card p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--lagecto-muted)]">Recent sales</p>
+            {canSales ? (
+              <Link href="/shop/sales" className="text-xs font-semibold text-[#0B6E4F]">
+                All
+              </Link>
+            ) : null}
+          </div>
+          <ul className="mt-3 grid gap-2">
+            {home.recentSales.map((sale) => (
+              <li key={sale.id} className="flex items-center justify-between gap-3 rounded-2xl bg-[#F7F3E8] px-3 py-2 text-sm">
+                <span className="min-w-0">
+                  <span className="block truncate">{sale.number}</span>
+                  {sale.date ? <span className="block text-[11px] text-[var(--lagecto-muted)]">{formatDateTime(sale.date)}</span> : null}
+                </span>
+                <span className="shrink-0 font-medium">{money(sale.total)}</span>
+              </li>
+            ))}
+            {!home.recentSales.length ? <li className="text-sm text-[var(--lagecto-muted)]">No completed sales yet.</li> : null}
+          </ul>
+        </section>
+
+        <section className="lg-card p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--lagecto-muted)]">Pending orders</p>
+            <Link href="/shop/orders" className="text-xs font-semibold text-[#0B6E4F]">
+              All
+            </Link>
+          </div>
+          <ul className="mt-3 grid gap-2">
+            {home.pendingOrders.map((order) => (
+              <li key={order.id} className="flex items-center justify-between gap-3 rounded-2xl bg-[#F7F3E8] px-3 py-2 text-sm">
+                <span className="min-w-0">
+                  <span className="block truncate">{order.number}</span>
+                  <span className="block truncate text-[11px] text-[var(--lagecto-muted)]">{order.customerName}</span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block font-medium">{money(order.total)}</span>
+                  <StatusBadge value={order.status} />
                 </span>
               </li>
             ))}
-            {!recentSales?.length ? <li className="text-[var(--lagecto-muted)]">No completed sales in view.</li> : null}
+            {!home.pendingOrders.length ? (
+              <li className="text-sm text-[var(--lagecto-muted)]">No pending WhatsApp checkouts.</li>
+            ) : null}
           </ul>
         </section>
-        <section className="os-surface">
-          <p className="os-kicker">Quick actions</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <ActionTile href="/shop/pos" title="Open POS" hint={features.has("pos") ? "Ready" : "Locked"} />
-            <ActionTile href="/shop/quotations" title="Quotations" hint="Estimates and proposals" />
-            <ActionTile href="/shop/employees" title="People" hint={features.has("employees") ? `${stats?.employee_count || 0} active` : "Kristen"} />
-            <ActionTile href="/shop/inventory" title="Inventory" hint={stats?.low_stock ? `${stats.low_stock} need attention` : "Stock"} />
-            <ActionTile href="/shop/reports" title="Report to admin" hint="Operational notes" />
-            <ActionTile href="/shop/help" title="Help & Support" hint="FAQs, bugs, technical issues" />
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <section className="lg-card p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--lagecto-muted)]">Best sellers</p>
+            {canSales ? (
+              <Link href="/shop/sales" className="text-xs font-semibold text-[#0B6E4F]">
+                Sales
+              </Link>
+            ) : null}
           </div>
+          <ul className="mt-3 grid gap-2">
+            {home.bestSellers.map((item) => (
+              <li key={item.id || item.name} className="flex items-center justify-between gap-3 rounded-2xl bg-[#F7F3E8] px-3 py-2 text-sm">
+                <span className="truncate">{item.name}</span>
+                <span className="shrink-0 text-[var(--lagecto-muted)]">{item.quantity} sold</span>
+              </li>
+            ))}
+            {!home.bestSellers.length ? (
+              <li className="text-sm text-[var(--lagecto-muted)]">Best sellers appear after completed POS or order sales.</li>
+            ) : null}
+          </ul>
         </section>
+
+        {canChat ? (
+        <section className="lg-card p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--lagecto-muted)]">Messages</p>
+            <Link href="/shop/chat" className="text-xs font-semibold text-[#0B6E4F]">
+              Inbox
+            </Link>
+          </div>
+          <ul className="mt-3 grid gap-2">
+            {home.recentChats.map((row) => (
+              <li key={row.id}>
+                <Link href={`/shop/chat?c=${row.id}`} className="flex items-center justify-between gap-3 rounded-2xl px-1 py-1 hover:bg-[#F7F3E8]">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium">{row.peer_name}</span>
+                    <span className="block truncate text-[11px] text-[var(--lagecto-muted)]">{row.last_message_preview || "No messages yet"}</span>
+                  </span>
+                  {row.unread ? (
+                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#0B6E4F] px-1 text-[11px] text-white">
+                      {row.unread > 9 ? "9+" : row.unread}
+                    </span>
+                  ) : null}
+                </Link>
+              </li>
+            ))}
+            {!home.recentChats.length ? (
+              <li className="text-sm text-[var(--lagecto-muted)]">Customer messages for this shop appear here.</li>
+            ) : null}
+          </ul>
+        </section>
+        ) : null}
       </div>
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <ActionTile href="/shop/orders" title="Manage orders" hint="Confirm cash and complete" />
-        <ActionTile href="/shop/expenses" title="Expenses" hint={subscription.verified ? "This period" : "Kristen"} />
-        <ActionTile href="/shop/promotions" title="Promotions" hint="Included on Free" />
-        <ActionTile href="/shop/loyalty" title="Customer loyalty" hint="Shop-only rewards" />
-        <ActionTile href="/shop/help" title="Help & Support" hint="Storefront, POS, payroll, WhatsApp checkout" />
-        <ActionTile href="/shop/subscription" title="Subscription" hint={subscription.verified ? "Verified shop" : "Upgrade for a verified badge"} />
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {canInventory ? (
+        <section className="lg-card p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--lagecto-muted)]">Stock alerts</p>
+            <Link href="/shop/inventory" className="text-xs font-semibold text-[#0B6E4F]">
+              Inventory
+            </Link>
+          </div>
+          <ul className="mt-3 grid gap-2">
+            {home.lowStock.map((row) => (
+              <li key={row.id} className="flex items-center justify-between gap-3 rounded-2xl bg-[#F7F3E8] px-3 py-2 text-sm">
+                <span className="truncate">{row.name}</span>
+                <span className="shrink-0 text-[var(--lagecto-muted)]">{row.stock} left</span>
+              </li>
+            ))}
+            {!home.lowStock.length ? (
+              <li className="text-sm text-[var(--lagecto-muted)]">
+                {home.outOfStock ? `${home.outOfStock} product${home.outOfStock === 1 ? "" : "s"} at zero stock.` : "No low-stock products right now."}
+              </li>
+            ) : null}
+          </ul>
+        </section>
+        ) : null}
+
+        {canRequests ? (
+        <section className="lg-card p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--lagecto-muted)]">Enquiries</p>
+            <Link href="/shop/service-requests" className="text-xs font-semibold text-[#0B6E4F]">
+              All
+            </Link>
+          </div>
+          <ul className="mt-3 grid gap-2">
+            {home.enquiries.map((row) => (
+              <li key={row.id} className="flex items-center justify-between gap-3 rounded-2xl bg-[#F7F3E8] px-3 py-2 text-sm">
+                <span className="truncate">{row.title}</span>
+                <StatusBadge value={row.status} />
+              </li>
+            ))}
+            {!home.enquiries.length ? <li className="text-sm text-[var(--lagecto-muted)]">No open customer requests.</li> : null}
+          </ul>
+          {home.activity.length ? (
+            <ul className="mt-3 grid gap-1 border-t border-[var(--lagecto-border)] pt-3">
+              {home.activity.map((note) => (
+                <li key={note.id} className="text-xs text-[var(--lagecto-muted)]">
+                  {note.title}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+        ) : null}
       </div>
+
+      {staffIsOwner(staffRole) ? (
+        <div className="mt-3">
+          <ShopStatusCard subscription={subscription} />
+        </div>
+      ) : null}
     </>
   );
 }

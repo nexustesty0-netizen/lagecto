@@ -47,7 +47,7 @@ export function GalleryManager({ shopId, items }: { shopId: string; items: Item[
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {items.map((item) => (
           <figure key={item.id} className="overflow-hidden rounded-2xl bg-white">
-            <MediaPreview url={item.url} title={item.alt_text || "Gallery item"} className="aspect-square w-full" />
+            <MediaPreview url={item.url} title={item.alt_text || "Gallery item"} className="aspect-square w-full" fit="cover" />
             <button type="button" className="w-full py-2 text-sm text-[#C2413B]" onClick={() => setPending(item)}>
               Remove
             </button>

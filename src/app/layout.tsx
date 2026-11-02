@@ -23,21 +23,30 @@ export const metadata: Metadata = {
     template: `%s | ${BRAND.name}`,
   },
   description: BRAND.description,
+  alternates: { canonical: siteUrl() },
+  robots: { index: true, follow: true },
   openGraph: {
     title: BRAND.name,
     description: BRAND.description,
     url: siteUrl(),
     siteName: BRAND.name,
-    images: [{ url: "/brand/logo.png" }],
+    locale: "en_ZW",
+    images: [{ url: "/brand/logo.png", alt: `${BRAND.name} logo` }],
     type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: BRAND.name,
+    description: BRAND.description,
+    images: ["/brand/logo.png"],
   },
   icons: {
     icon: [
-      { url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" },
+      { url: "/favicon.ico", type: "image/x-icon" },
       { url: "/favicon.png", type: "image/png" },
     ],
     apple: "/apple-touch-icon.png",
-    shortcut: "/apple-touch-icon.png",
+    shortcut: "/favicon.ico",
   },
 };
 

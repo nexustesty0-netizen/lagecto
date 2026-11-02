@@ -9,8 +9,10 @@ export function MediaField({
   value,
   onChange,
   purpose,
-  accept = "image/*",
+  accept,
   hint,
+  allowUpload,
+  quotaUrl,
 }: {
   label: string;
   value?: string | null;
@@ -18,15 +20,24 @@ export function MediaField({
   purpose: "logo" | "cover" | "product" | "media" | "video" | "blog" | "ad";
   accept?: string;
   hint?: string;
+  allowUpload?: boolean;
+  quotaUrl?: string | null;
 }) {
   const [error, setError] = useState("");
   const [url, setUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const isVideo = purpose === "video";
+  const urlOnly = purpose === "video" || purpose === "blog";
+  const canUpload = allowUpload ?? !urlOnly;
+  const fileAccept = accept || "image/*";
 
   async function upload(file: File) {
     setError("");
-    const sizeCheck = validateUpload(file, isVideo ? "video" : "image");
+    if (!canUpload || isVideo) {
+      setError("Videos must be added as a URL.");
+      return;
+    }
+    const sizeCheck = validateUpload(file, "image");
     if (!sizeCheck.ok) {
       setError(sizeCheck.error);
       return;
@@ -35,6 +46,8 @@ export function MediaField({
     const form = new FormData();
     form.set("purpose", purpose);
     form.set("file", file);
+    const currentUrl = quotaUrl || value;
+    if (currentUrl) form.set("currentUrl", currentUrl);
     const res = await fetch("/api/uploads", { method: "POST", body: form });
     const data = await res.json();
     setUploading(false);
@@ -72,7 +85,12 @@ export function MediaField({
       <p className="text-sm font-medium">{label}</p>
       {value ? (
         <div className="overflow-hidden rounded-2xl border border-[var(--lagecto-border)] bg-white">
-          <MediaPreview url={value} title={label} className={isVideo ? "aspect-video w-full" : "max-h-64 w-full"} imgClassName="mx-auto max-h-64 w-full object-contain" />
+          <MediaPreview
+            url={value}
+            title={label}
+            className={isVideo ? "w-full max-h-[32rem]" : "max-h-64 w-full"}
+            imgClassName="mx-auto max-h-64 w-full object-contain"
+          />
           <div className="flex gap-2 border-t px-3 py-2">
             <button type="button" className="text-sm text-[#C2413B]" onClick={() => onChange(null)}>
               Remove
@@ -80,33 +98,33 @@ export function MediaField({
           </div>
         </div>
       ) : null}
-      <label className="rounded-xl border border-dashed px-3 py-3 text-sm">
-        {uploading ? "Uploading…" : "Upload from this device"}
-        <input
-          type="file"
-          accept={accept}
-          className="sr-only"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void upload(file);
-            event.currentTarget.value = "";
-          }}
-        />
-      </label>
+      {canUpload ? (
+        <label className="rounded-xl border border-dashed px-3 py-3 text-sm">
+          {uploading ? "Uploading…" : "Upload from this device"}
+          <input
+            type="file"
+            accept={fileAccept}
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void upload(file);
+              event.currentTarget.value = "";
+            }}
+          />
+        </label>
+      ) : null}
       <div className="flex gap-2">
         <input
           value={url}
           onChange={(event) => setUrl(event.target.value)}
-          placeholder={isVideo ? "YouTube, Instagram, TikTok, Facebook, or video URL" : "Image URL or Instagram / TikTok / Facebook / YouTube link"}
+          placeholder={isVideo ? "Facebook, Instagram, YouTube, or TikTok URL" : "Image URL or Instagram / TikTok / Facebook / YouTube link"}
           className="flex-1 rounded-xl border px-3 py-2"
         />
         <button type="button" onClick={applyUrl} className="rounded-xl border px-3 py-2 text-sm">
           Use URL
         </button>
       </div>
-      <p className="text-xs text-[var(--lagecto-muted)]">
-        {[hint, isVideo ? "Videos must be 40MB or smaller." : IMAGE_SIZE_HINT].filter(Boolean).join(" ")}
-      </p>
+      <p className="text-xs text-[var(--lagecto-muted)]">{[hint, isVideo ? null : IMAGE_SIZE_HINT].filter(Boolean).join(" ")}</p>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </div>
   );

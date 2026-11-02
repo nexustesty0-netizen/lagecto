@@ -17,6 +17,7 @@ export function AdminPosClient() {
   const [quantity, setQuantity] = useState("1");
   const [message, setMessage] = useState("");
   const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const subtotal = useMemo(
     () => lines.reduce((sum, line) => sum + Number(line.unit_price) * line.quantity, 0),
@@ -37,6 +38,9 @@ export function AdminPosClient() {
 
   async function checkout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy || !lines.length) return;
+    setBusy(true);
+    setMessage("");
     const form = new FormData(event.currentTarget);
     const res = await fetch("/api/admin/pos", {
       method: "POST",
@@ -49,7 +53,8 @@ export function AdminPosClient() {
         notes: form.get("notes"),
       }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
     if (!res.ok) {
       setMessage(data.error || "Unable to record this payment.");
       return;
@@ -120,18 +125,30 @@ export function AdminPosClient() {
           ))}
         </ul>
         <p className="mt-4 text-xl font-semibold">Total {money(subtotal)}</p>
-        <input name="customer" placeholder="Customer name" className="mt-3 w-full rounded-xl border px-3 py-2" />
-        <input name="phone" placeholder="Phone (optional)" className="mt-2 w-full rounded-xl border px-3 py-2" />
-        <input name="notes" placeholder="Notes (optional)" className="mt-2 w-full rounded-xl border px-3 py-2" />
-        <select name="payment" className="mt-2 w-full rounded-xl border px-3 py-2">
+        <label className="sr-only" htmlFor="admin-pos-customer">
+          Customer name
+        </label>
+        <input id="admin-pos-customer" name="customer" placeholder="Customer name" className="mt-3 w-full rounded-xl border px-3 py-2" />
+        <label className="sr-only" htmlFor="admin-pos-phone">
+          Phone
+        </label>
+        <input id="admin-pos-phone" name="phone" placeholder="Phone (optional)" className="mt-2 w-full rounded-xl border px-3 py-2" />
+        <label className="sr-only" htmlFor="admin-pos-notes">
+          Notes
+        </label>
+        <input id="admin-pos-notes" name="notes" placeholder="Notes (optional)" className="mt-2 w-full rounded-xl border px-3 py-2" />
+        <label className="sr-only" htmlFor="admin-pos-payment">
+          Payment method
+        </label>
+        <select id="admin-pos-payment" name="payment" className="mt-2 w-full rounded-xl border px-3 py-2">
           <option value="cash">Cash</option>
           <option value="ecocash">EcoCash</option>
           <option value="visa">Visa</option>
           <option value="mastercard">Mastercard</option>
           <option value="bank">Bank transfer</option>
         </select>
-        <button disabled={!lines.length} className="mt-3 w-full rounded-xl bg-[#0B6E4F] py-3 text-white disabled:opacity-50">
-          Record payment & generate receipt
+        <button disabled={!lines.length || busy} className="mt-3 w-full rounded-xl bg-[#0B6E4F] py-3 text-white disabled:opacity-50">
+          {busy ? "Recording…" : "Record payment & generate receipt"}
         </button>
         {message ? <p className="mt-2 text-sm text-[#0B6E4F]">{message}</p> : null}
         {receiptId ? (

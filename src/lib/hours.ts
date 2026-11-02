@@ -126,6 +126,37 @@ export function formatDayHours(slot: DayHours) {
   return `${slot.open} – ${slot.close}`;
 }
 
+export function groupedOpeningHours(hours: OpeningHours) {
+  const groups: { start: (typeof WEEKDAYS)[number]; end: (typeof WEEKDAYS)[number]; hours: string }[] = [];
+  for (const day of WEEKDAYS) {
+    const text = formatDayHours(hours.days[day.key]);
+    const last = groups[groups.length - 1];
+    if (last && last.hours === text) last.end = day;
+    else groups.push({ start: day, end: day, hours: text });
+  }
+  return groups.map((group) => ({
+    days: group.start.key === group.end.key ? group.start.label : `${group.start.label} – ${group.end.label}`,
+    hours: group.hours,
+    closed: group.hours === "Closed",
+    keys: WEEKDAYS.filter((_, index) => {
+      const start = WEEKDAYS.findIndex((day) => day.key === group.start.key);
+      const end = WEEKDAYS.findIndex((day) => day.key === group.end.key);
+      return index >= start && index <= end;
+    }).map((day) => day.key),
+  }));
+}
+
+export function weekdayKeyNow(timeZone?: string): WeekdayKey {
+  const short = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timeZone || DEFAULT_TIMEZONE,
+    weekday: "short",
+  })
+    .format(new Date())
+    .slice(0, 3)
+    .toLowerCase();
+  return WEEKDAY_FROM_SHORT[short] || "mon";
+}
+
 export function withComputedOpen<T extends { is_open?: boolean | null; auto_close?: boolean | null; opening_hours?: unknown }>(
   shop: T,
 ): T & { is_open: boolean } {

@@ -169,7 +169,7 @@ export async function loadShopBadgesMap(shopIds: string[]) {
     const def = row.customer_badge_definitions as unknown as PublicShopBadge | PublicShopBadge[] | null;
     const item = Array.isArray(def) ? def[0] : def;
     if (!item?.slug) continue;
-    if (!["verified_shop", "customer_favourite", "top_seller", "founding_shop", "trusted_shop", "excellent_rating", "marketplace_leader"].includes(item.slug)) {
+    if (!["verified_shop", "customer_favourite", "top_seller", "trusted_shop", "excellent_rating", "marketplace_leader"].includes(item.slug)) {
       continue;
     }
     const list = map.get(row.shop_id) || [];
@@ -194,8 +194,8 @@ export const BADGE_CATEGORIES = [
 ] as const;
 
 export function rarityClass(rarity: string) {
-  if (rarity === "legendary") return "ring-[#D4AF37]/70 bg-[linear-gradient(180deg,#fffdf8,#f7efd6)]";
-  if (rarity === "epic") return "ring-[#0B6E4F]/35 bg-[linear-gradient(180deg,#fffdf8,#e7f3ee)]";
+  if (rarity === "legendary") return "ring-[#D4AF37]/70 bg-[#F8F1D8]";
+  if (rarity === "epic") return "ring-[#0B6E4F]/35 bg-[#E7F3EC]";
   if (rarity === "rare") return "ring-[#2E8B57]/30";
   if (rarity === "uncommon") return "ring-[#0B6E4F]/15";
   return "ring-[var(--lagecto-border)]";

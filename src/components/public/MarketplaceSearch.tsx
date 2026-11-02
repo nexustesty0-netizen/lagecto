@@ -43,7 +43,7 @@ export function MarketplaceSearch({
                     key={item.slug}
                     href={href}
                     role="listitem"
-                    className={`inline-flex min-h-11 shrink-0 snap-start items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition ${
+                    className={`inline-flex min-h-9 shrink-0 snap-start items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition sm:min-h-11 sm:px-3 sm:py-2 sm:text-sm ${
                       isActive ? "bg-[#0B6E4F] text-white" : "border border-[var(--lagecto-border)] bg-[var(--lagecto-ivory)] text-[#1E1E1E] hover:border-[#0B6E4F]/40"
                     }`}
                   >
@@ -55,28 +55,28 @@ export function MarketplaceSearch({
             </div>
           </div>
         </div>
-        <div className="mt-6 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-center sm:gap-3">
+        <div className="mt-4 grid grid-cols-3 gap-1.5 sm:mt-6 sm:flex sm:flex-wrap sm:justify-center sm:gap-3">
           {[
             { href: "/shops", icon: ShieldCheck, label: "Verified shops" },
-            { href: "/cart", icon: Wallet, label: "Checkout via WhatsApp" },
-            { href: "/how-it-works", icon: Package, label: "How checkout works" },
+            { href: "/cart", icon: Wallet, label: "WhatsApp checkout" },
+            { href: "/how-it-works", icon: Package, label: "How it works" },
           ].map((item) => (
             <Link
               key={item.label}
               href={item.href}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--lagecto-border)] bg-[var(--lagecto-ivory)] px-4 py-2.5 text-sm font-medium"
+              className="inline-flex min-h-10 flex-col items-center justify-center gap-1 rounded-xl border border-[var(--lagecto-border)] bg-[var(--lagecto-ivory)] px-2 py-2 text-center text-[11px] font-medium leading-tight sm:min-h-11 sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm"
             >
-              <item.icon className="h-4 w-4 text-[#0B6E4F]" aria-hidden />
+              <item.icon className="h-3.5 w-3.5 text-[#0B6E4F] sm:h-4 sm:w-4" aria-hidden />
               {item.label}
             </Link>
           ))}
         </div>
       </div>
-      <div className="mt-8 border-y border-[var(--lagecto-border)] bg-[color-mix(in_srgb,white_55%,transparent)]">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 text-sm text-[var(--lagecto-muted)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-5 border-y border-[var(--lagecto-border)] bg-[color-mix(in_srgb,white_55%,transparent)] sm:mt-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-2.5 text-xs text-[var(--lagecto-muted)] sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:py-3 sm:text-sm">
           <p className="inline-flex items-center gap-2">
             <MapPin className="h-4 w-4 text-[#0B6E4F]" aria-hidden />
-            Recommended: collect from a local LaGecto shop. Payment is arranged directly with the shop.
+            Payment and collection are arranged directly with each shop.
           </p>
           <p className="inline-flex items-center gap-2">
             Bulawayo, Zimbabwe -

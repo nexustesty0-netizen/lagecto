@@ -24,7 +24,7 @@ export function TextField({
 }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <Field label={label}>
-      <input {...props} className={`h-12 rounded-2xl px-4 ${props.className || ""}`} />
+      <input {...props} className={`h-[var(--lg-control)] rounded-[var(--lg-radius-sm)] px-4 ${props.className || ""}`} />
     </Field>
   );
 }
@@ -40,7 +40,7 @@ export function PasswordField({
         <input
           {...props}
           type={show ? "text" : "password"}
-          className={`h-12 w-full rounded-2xl px-4 pr-12 ${props.className || ""}`}
+          className={`h-[var(--lg-control)] w-full rounded-[var(--lg-radius-sm)] px-4 pr-12 ${props.className || ""}`}
         />
         <button
           type="button"
@@ -64,7 +64,7 @@ export function PrimaryButton({
     <button
       {...props}
       disabled={props.disabled || loading}
-      className={`h-12 w-full rounded-2xl bg-[#0B6E4F] px-4 font-semibold text-white shadow-[0_10px_24px_rgba(11,110,79,0.28)] disabled:cursor-not-allowed disabled:opacity-60 ${props.className || ""}`}
+      className={`lg-btn h-[var(--lg-control)] w-full disabled:cursor-not-allowed disabled:opacity-60 ${props.className || ""}`}
     >
       {loading ? (
         <span className="inline-flex items-center gap-2">
@@ -74,6 +74,17 @@ export function PrimaryButton({
       ) : (
         children
       )}
+    </button>
+  );
+}
+
+export function SecondaryButton({
+  children,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button {...props} className={`lg-btn-secondary h-[var(--lg-control)] ${props.className || ""}`}>
+      {children}
     </button>
   );
 }

@@ -1,29 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   Award,
+  BadgeCheck,
+  Banknote,
+  BarChart3,
   Bell,
   BookOpen,
-  Boxes,
   Briefcase,
   Building2,
   Calendar,
+  ChevronDown,
   ClipboardList,
   CreditCard,
+  Eye,
   FileText,
   Gift,
   Globe,
+  Heart,
+  Inbox,
   LayoutDashboard,
   LifeBuoy,
+  LineChart,
   Lock,
   LogOut,
   Megaphone,
   Menu,
   MessageCircle,
   Newspaper,
+  PanelLeftClose,
+  PanelLeftOpen,
   Receipt,
   Search,
   Settings,
@@ -31,181 +40,211 @@ import {
   ShoppingCart,
   Sparkles,
   Store,
+  Tag,
+  Tags,
+  Truck,
+  UserCog,
   Users,
+  UsersRound,
   Wallet,
+  Warehouse,
   X,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { BRAND } from "@/lib/brand";
-import type { Profile, UserRole } from "@/lib/types";
-import { canSeeAdminLogs } from "@/lib/admin-access";
+import type { Profile } from "@/lib/types";
+import { adminPathAllowed, adminRoleLabel, effectiveAdminRole } from "@/lib/admin-access";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { staffHome, staffPathAllowed, staffRoleLabel, type ShopStaffRole } from "@/lib/shop/staff";
+import {
+  adminNav,
+  customerNav,
+  filterNavByHref,
+  filterShopNav,
+  flattenNav,
+  groupStartsOpen,
+  headerSearchPath,
+  isNavActive,
+  mobilePrimaryHrefs,
+  shopNav,
+  shopNavLock,
+  type NavGroupDef,
+  type NavIconKey,
+  type NavItemDef,
+} from "@/lib/app-nav";
+import { NAV_BADGES_EVENT, type NavBadgeCounts } from "@/lib/notifications-events";
 
-type NavItem = { href: string; label: string; icon: typeof LayoutDashboard };
-type NavGroup = { title: string; items: NavItem[] };
-
-const NAV: Record<UserRole, NavGroup[]> = {
-  customer: [
-    {
-      title: "Marketplace",
-      items: [
-        { href: "/customer", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/customer/shops", label: "Shops", icon: Store },
-        { href: "/customer/saved", label: "Saved shops", icon: Award },
-        { href: "/customer/smart-shop", label: "Smart shop", icon: Sparkles },
-        { href: "/customer/cart", label: "Cart", icon: ShoppingCart },
-        { href: "/customer/orders", label: "Orders", icon: ClipboardList },
-        { href: "/customer/receipts", label: "Receipts", icon: Receipt },
-        { href: "/customer/bookings", label: "Bookings", icon: Calendar },
-        { href: "/customer/requests", label: "Requests", icon: Briefcase },
-        { href: "/customer/chat", label: "My chats", icon: MessageCircle },
-        { href: "/customer/community", label: "Community", icon: Users },
-        { href: "/customer/news", label: "News", icon: Newspaper },
-        { href: "/customer/promotions", label: "Promotions", icon: Megaphone },
-      ],
-    },
-    {
-      title: "Life",
-      items: [
-        { href: "/customer/loyalty", label: "Loyalty", icon: Gift },
-        { href: "/customer/rewards", label: "Rewards", icon: Sparkles },
-        { href: "/customer/badges", label: "Achievements", icon: Award },
-        { href: "/customer/diary", label: "Diary", icon: BookOpen },
-        { href: "/customer/notifications", label: "Notifications", icon: Bell },
-        { href: "/support", label: "Help", icon: LifeBuoy },
-        { href: "/customer/settings", label: "Settings", icon: Settings },
-      ],
-    },
-    {
-      title: "Stebo",
-      items: [{ href: "/customer/stebo", label: "Stebo", icon: Sparkles }],
-    },
-  ],
-  shop_owner: [
-    {
-      title: "Shop Management",
-      items: [
-        { href: "/shop", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/shop/products", label: "Products", icon: ShoppingBag },
-        { href: "/shop/services", label: "Services", icon: Briefcase },
-        { href: "/shop/categories", label: "Categories", icon: Boxes },
-        { href: "/shop/inventory", label: "Inventory", icon: Boxes },
-        { href: "/shop/pos", label: "POS", icon: CreditCard },
-        { href: "/shop/sales", label: "Sales", icon: ClipboardList },
-        { href: "/shop/quotations", label: "Quotations", icon: FileText },
-        { href: "/shop/orders", label: "Orders", icon: ClipboardList },
-        { href: "/shop/bookings", label: "Bookings", icon: Calendar },
-        { href: "/shop/service-requests", label: "Requests", icon: MessageCircle },
-        { href: "/shop/customers", label: "Customers", icon: Users },
-        { href: "/shop/employees", label: "Employees", icon: Users },
-        { href: "/shop/payroll", label: "Payroll", icon: Wallet },
-        { href: "/shop/expenses", label: "Expenses", icon: Receipt },
-        { href: "/shop/suppliers", label: "Suppliers", icon: Store },
-        { href: "/shop/purchases", label: "Purchases", icon: ShoppingCart },
-        { href: "/shop/financials", label: "Financials", icon: Wallet },
-        { href: "/shop/payments", label: "Payments", icon: CreditCard },
-        { href: "/shop/receipts", label: "Receipts", icon: Receipt },
-        { href: "/shop/storefront", label: "Storefront", icon: Globe },
-        { href: "/shop/settings", label: "Settings", icon: Settings },
-      ],
-    },
-    {
-      title: "Growth",
-      items: [
-        { href: "/shop/promotions", label: "Promotions", icon: Megaphone },
-        { href: "/shop/loyalty", label: "Customer loyalty", icon: Gift },
-        { href: "/shop/community", label: "Community", icon: Users },
-        { href: "/shop/insights", label: "Insights", icon: Sparkles },
-        { href: "/shop/reports", label: "Reports", icon: ClipboardList },
-        { href: "/shop/subscription", label: "Subscription", icon: CreditCard },
-        { href: "/shop/chat", label: "Messages", icon: MessageCircle },
-        { href: "/shop/notifications", label: "Notifications", icon: Bell },
-        { href: "/shop/news", label: "News", icon: Newspaper },
-        { href: "/shop/diary", label: "Diary", icon: BookOpen },
-        { href: "/shop/help", label: "Help", icon: LifeBuoy },
-      ],
-    },
-    {
-      title: "Stebo",
-      items: [{ href: "/shop/stebo", label: "Stebo", icon: Sparkles }],
-    },
-  ],
-  admin: [
-    {
-      title: "Platform",
-      items: [
-        { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/admin/users", label: "Manage users", icon: Users },
-        { href: "/admin/shops", label: "Shops", icon: Store },
-        { href: "/admin/pos", label: "POS", icon: CreditCard },
-        { href: "/admin/receipts", label: "Receipts", icon: Receipt },
-        { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
-        { href: "/admin/payments", label: "Payments", icon: CreditCard },
-        { href: "/admin/subscriptions", label: "Packages", icon: CreditCard },
-        { href: "/admin/security", label: "Security", icon: Lock },
-        { href: "/admin/reports", label: "Reports", icon: Wallet },
-        { href: "/admin/shop-reports", label: "Shop reports", icon: ClipboardList },
-        { href: "/admin/support", label: "Support Centre", icon: LifeBuoy },
-        { href: "/admin/expenses", label: "Expenses", icon: Receipt },
-        { href: "/admin/ads", label: "Ads", icon: Megaphone },
-        { href: "/admin/loyalty", label: "Customer loyalty", icon: Gift },
-        { href: "/admin/badges", label: "Badges", icon: Award },
-        { href: "/admin/campaigns", label: "Campaigns", icon: Sparkles },
-        { href: "/admin/promo-codes", label: "Promo codes", icon: Megaphone },
-      ],
-    },
-    {
-      title: "Content",
-      items: [
-        { href: "/admin/news", label: "News", icon: Newspaper },
-        { href: "/admin/chat", label: "Messages", icon: MessageCircle },
-        { href: "/admin/company", label: "Company", icon: Building2 },
-        { href: "/admin/languages", label: "Languages", icon: Globe },
-        { href: "/admin/notifications", label: "Send update", icon: Bell },
-        { href: "/admin/diary", label: "Diary", icon: BookOpen },
-        { href: "/admin/settings", label: "Settings", icon: Settings },
-      ],
-    },
-    {
-      title: "Stebo",
-      items: [{ href: "/admin/stebo", label: "Intelligence", icon: Sparkles }],
-    },
-  ],
+const ICONS: Record<NavIconKey, typeof LayoutDashboard> = {
+  dashboard: LayoutDashboard,
+  wallet: Wallet,
+  products: ShoppingBag,
+  categories: Tags,
+  inventory: Warehouse,
+  services: Briefcase,
+  pos: CreditCard,
+  sales: Banknote,
+  orders: ClipboardList,
+  customers: Users,
+  messages: MessageCircle,
+  promotions: Megaphone,
+  reports: BarChart3,
+  analytics: LineChart,
+  employees: UserCog,
+  subscription: BadgeCheck,
+  settings: Settings,
+  help: LifeBuoy,
+  quotations: FileText,
+  bookings: Calendar,
+  enquiries: Inbox,
+  payroll: Banknote,
+  expenses: Receipt,
+  suppliers: Truck,
+  purchases: ShoppingCart,
+  payments: CreditCard,
+  receipts: Receipt,
+  storefront: Globe,
+  loyalty: Gift,
+  community: UsersRound,
+  notifications: Bell,
+  news: Newspaper,
+  diary: BookOpen,
+  stebo: Sparkles,
+  marketplace: Store,
+  cart: ShoppingCart,
+  wishlist: Heart,
+  recent: Eye,
+  verification: BadgeCheck,
+  shops: Store,
+  badge: BadgeCheck,
+  lock: Lock,
+  building: Building2,
+  globe: Globe,
+  tag: Tag,
+  ads: Megaphone,
+  campaigns: Sparkles,
+  award: Award,
+  file: FileText,
 };
 
-const MOBILE_PRIMARY: Record<UserRole, string[]> = {
-  customer: ["/customer", "/customer/shops", "/customer/cart", "/customer/diary", "/customer/stebo"],
-  shop_owner: ["/shop", "/shop/orders", "/shop/pos", "/shop/financials", "/shop/stebo"],
-  admin: ["/admin", "/admin/shops", "/admin/pos", "/admin/users", "/admin/stebo"],
-};
-
-function shopNav(providerType?: string | null) {
-  const hide = new Set<string>();
-  if (providerType === "products") {
-    hide.add("/shop/services");
-    hide.add("/shop/bookings");
-    hide.add("/shop/service-requests");
-  } else if (providerType === "services") {
-    hide.add("/shop/products");
-    hide.add("/shop/inventory");
+function groupsFor(profile: Profile, shopProviderType?: string | null, staffRole?: ShopStaffRole | null) {
+  if (profile.role === "admin") return filterNavByHref(adminNav(), (href) => adminPathAllowed(profile, href));
+  if (profile.role === "shop_owner" || staffRole) {
+    const role = staffRole || (profile.role === "shop_owner" ? "owner" : null);
+    return filterShopNav(shopNav(), {
+      providerType: shopProviderType,
+      allowed: (href) => staffPathAllowed(role, href),
+    });
   }
-  if (!hide.size) return NAV.shop_owner;
-  return NAV.shop_owner.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => !hide.has(item.href)),
-  }));
+  return customerNav();
 }
 
-function adminNav(profile: Profile) {
-  if (canSeeAdminLogs(profile)) return NAV.admin;
-  return NAV.admin.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => item.href !== "/admin/security"),
-  }));
+function badgeCount(item: NavItemDef, badges: NavBadgeCounts) {
+  if (item.badge === "messages") return badges.unreadMessages;
+  if (item.badge === "notifications") return badges.unread;
+  return 0;
 }
 
-function flatten(groups: NavGroup[]) {
-  return groups.flatMap((group) => group.items);
+function NavMenu({
+  groups,
+  home,
+  pathname,
+  collapsed,
+  badges,
+  lockedFor,
+  onNavigate,
+  onLogout,
+}: {
+  groups: NavGroupDef[];
+  home: string;
+  pathname: string;
+  collapsed: boolean;
+  badges: NavBadgeCounts;
+  lockedFor?: (href: string) => string | null;
+  onNavigate?: () => void;
+  onLogout: () => void;
+}) {
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  return (
+    <nav className="app-nav flex min-h-0 flex-1 flex-col" aria-label="Application">
+      <div className="app-nav-scroll min-h-0 flex-1 overflow-y-auto pr-1">
+        {groups.map((group) => {
+          const startsOpen = groupStartsOpen(group, pathname, home);
+          const expanded = openGroups[group.title] ?? startsOpen;
+          const showItems = collapsed ? startsOpen : expanded;
+          if (collapsed && !showItems) return null;
+          return (
+            <div key={group.title} className="mb-3">
+              {collapsed ? (
+                <div className="mx-auto mb-1 h-px w-6 bg-white/15" aria-hidden />
+              ) : (
+                <button
+                  type="button"
+                  className="mb-1 flex w-full items-center justify-between px-3 py-1 text-left"
+                  aria-expanded={expanded}
+                  onClick={() =>
+                    setOpenGroups((current) => ({
+                      ...current,
+                      [group.title]: !(current[group.title] ?? groupStartsOpen(group, pathname, home)),
+                    }))
+                  }
+                >
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#FFB000]">{group.title}</span>
+                  <ChevronDown size={14} className={`text-white/50 transition ${expanded ? "rotate-0" : "-rotate-90"}`} />
+                </button>
+              )}
+              {showItems ? (
+                <div className="grid gap-0.5">
+                  {group.items.map((item) => {
+                    const active = isNavActive(pathname, item.href, home);
+                    const Icon = ICONS[item.icon];
+                    const count = badgeCount(item, badges);
+                    const locked = lockedFor?.(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        title={collapsed ? item.label : locked ? `${item.label} is limited on this plan` : item.label}
+                        onClick={onNavigate}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                          collapsed ? "justify-center px-0" : ""
+                        } ${active ? "bg-[#FFB000] text-[#12241c] shadow-[0_8px_18px_rgba(255,176,0,0.28)]" : "text-white/88 hover:bg-white/10"}`}
+                      >
+                        <span className={`relative grid h-8 w-8 shrink-0 place-items-center rounded-lg ${active ? "bg-white/30" : "bg-white/10"}`}>
+                          <Icon size={16} />
+                          {collapsed && count ? (
+                            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#C2413B]" />
+                          ) : null}
+                        </span>
+                        {collapsed ? <span className="sr-only">{item.label}</span> : item.label}
+                        {!collapsed && locked ? <Lock size={12} className="ml-auto shrink-0 opacity-70" aria-label="Limited on this plan" /> : null}
+                        {!collapsed && !locked && count ? (
+                          <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-[#C2413B] px-1 text-[10px] font-semibold text-white">
+                            {count > 9 ? "9+" : count}
+                          </span>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={onLogout}
+        title="Log out"
+        className={`mt-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-[#FFB4AE] hover:bg-white/10 ${collapsed ? "justify-center px-0" : ""}`}
+      >
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/10">
+          <LogOut size={16} />
+        </span>
+        {collapsed ? <span className="sr-only">Log out</span> : "Log out"}
+      </button>
+    </nav>
+  );
 }
 
 export function AppShell({
@@ -213,42 +252,84 @@ export function AppShell({
   children,
   shopName,
   shopProviderType,
+  staffRole,
+  shopFeatures,
+  shopDisabledFeatures,
 }: {
   profile: Profile;
   children: React.ReactNode;
   shopName?: string | null;
   shopProviderType?: string | null;
+  staffRole?: ShopStaffRole | null;
+  shopFeatures?: string[];
+  shopDisabledFeatures?: string[];
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const groups =
-    profile.role === "shop_owner" ? shopNav(shopProviderType) : profile.role === "admin" ? adminNav(profile) : NAV[profile.role];
-  const items = flatten(groups);
-  const mobile = items.filter((item) => MOBILE_PRIMARY[profile.role].includes(item.href));
-  const home = profile.role === "shop_owner" ? "/shop" : `/${profile.role}`;
-  const initials = (profile.name || profile.username || profile.email || "LG")
+  const [collapsed, setCollapsed] = useState(false);
+  const [badges, setBadges] = useState<NavBadgeCounts>({ unread: 0, unreadMessages: 0 });
+  const shopAccess = profile.role === "shop_owner" || Boolean(staffRole);
+  const groups = useMemo(
+    () => groupsFor(profile, shopProviderType, staffRole),
+    [profile, shopProviderType, staffRole],
+  );
+  const items = flattenNav(groups);
+  const area: "customer" | "shop_owner" | "admin" = shopAccess ? "shop_owner" : profile.role === "admin" ? "admin" : "customer";
+  const mobileKeys = mobilePrimaryHrefs(area, staffRole || (profile.role === "shop_owner" ? "owner" : null));
+  const mobile = items.filter((item) => mobileKeys.includes(item.href));
+  const home = shopAccess ? staffHome(staffRole || "owner") : `/${profile.role}`;
+  const search = headerSearchPath(area);
+  const roleLabel =
+    staffRole && staffRole !== "owner"
+      ? `${staffRoleLabel(staffRole)}${shopName ? ` · ${shopName}` : ""}`
+      : shopName || (profile.role === "admin" ? adminRoleLabel(effectiveAdminRole(profile)) : profile.role.replace("_", " "));
+  const initials = (profile.name || profile.username || "LG")
     .split(" ")
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
 
-  function isActive(href: string) {
-    if (pathname === href) return true;
-    if (href === home) return false;
-    return pathname.startsWith(href + "/") || pathname === href;
+  useEffect(() => {
+    setCollapsed(window.localStorage.getItem("lg-sidebar-collapsed") === "1");
+    function onBadges(event: Event) {
+      const detail = (event as CustomEvent<NavBadgeCounts>).detail;
+      if (detail) setBadges({ unread: Number(detail.unread || 0), unreadMessages: Number(detail.unreadMessages || 0) });
+    }
+    window.addEventListener(NAV_BADGES_EVENT, onBadges);
+    return () => window.removeEventListener(NAV_BADGES_EVENT, onBadges);
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((current) => {
+      const next = !current;
+      window.localStorage.setItem("lg-sidebar-collapsed", next ? "1" : "0");
+      return next;
+    });
   }
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/");
-    router.refresh();
+    try {
+      const { createBrowserSupabase } = await import("@/lib/supabase/browser");
+      await createBrowserSupabase().auth.signOut({ scope: "local" });
+    } catch {
+      // Continue with the server logout even if the browser client is unavailable.
+    }
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include", cache: "no-store" });
+    } catch {
+      // Still leave the app so a leftover session cannot bounce them back in.
+    }
+    window.location.assign("/login?logged_out=1");
   }
+
+  const lockedFor = shopAccess
+    ? (href: string) => shopNavLock(href, shopFeatures, shopDisabledFeatures)
+    : undefined;
 
   return (
     <div className="min-h-full">
-      <header className="sticky top-0 z-30 border-b border-[var(--lagecto-border)] bg-[color-mix(in_srgb,var(--lagecto-ivory)_88%,transparent)] backdrop-blur-xl" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+      <header className="sticky top-0 z-30 border-b border-[var(--lagecto-border)] bg-[var(--lagecto-ivory)]" style={{ paddingTop: "env(safe-area-inset-top)" }}>
         <div className="mx-auto flex max-w-[1440px] items-center justify-between px-3 py-2.5 sm:px-5">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <button type="button" className="grid h-11 w-11 place-items-center rounded-xl lg:hidden" aria-label="Open navigation" onClick={() => setOpen(true)}>
@@ -259,30 +340,37 @@ export function AppShell({
               <span className="truncate font-semibold tracking-tight">{BRAND.name}</span>
             </Link>
           </div>
-          <div className="hidden max-w-md flex-1 px-8 lg:block">
+          <form action={search.action} method="get" className="hidden max-w-md flex-1 px-8 lg:block">
             <label className="sr-only" htmlFor="app-search">
-              Search
+              {search.placeholder}
             </label>
             <div className="flex items-center gap-2 rounded-full border border-[var(--lagecto-border)] bg-white/80 px-3 py-2 text-sm">
               <Search size={16} className="text-[var(--lagecto-muted)]" />
               <input
                 id="app-search"
+                name="q"
                 className="w-full border-0 bg-transparent px-0 py-0 shadow-none focus:shadow-none"
-                placeholder="Search LaGecto"
+                placeholder={search.placeholder}
               />
             </div>
-          </div>
+          </form>
           <div className="flex items-center gap-2">
             <NotificationCenter />
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="grid h-11 w-11 place-items-center rounded-xl text-[#C2413B] lg:hidden"
+              aria-label="Log out"
+            >
+              <LogOut size={18} />
+            </button>
             <div className="hidden items-center gap-2 sm:flex">
               <div className="grid h-10 w-10 place-items-center rounded-full bg-[#0B6E4F] text-xs font-semibold text-white">
                 {initials}
               </div>
               <div className="text-right text-sm">
-                <p className="font-medium leading-tight">{profile.name || profile.username || profile.email}</p>
-                <p className="text-xs text-[var(--lagecto-muted)]">
-                  {shopName || profile.admin_role?.replace("_", " ") || profile.role.replace("_", " ")}
-                </p>
+                <p className="font-medium leading-tight">{profile.name || profile.username || "Account"}</p>
+                <p className="text-xs capitalize text-[var(--lagecto-muted)]">{roleLabel}</p>
               </div>
             </div>
           </div>
@@ -290,44 +378,38 @@ export function AppShell({
       </header>
 
       <div className="mx-auto flex max-w-[1440px]">
-        <aside className="sticky top-[61px] hidden h-[calc(100vh-61px)] w-[272px] shrink-0 overflow-y-auto p-3 lg:block">
-          <nav className="lg-card grid gap-4 p-3" aria-label="Application">
-            {groups.map((group) => (
-              <div key={group.title}>
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--lagecto-muted)]">
-                  {group.title}
-                </p>
-                <div className="grid gap-1">
-                  {group.items.map((item) => {
-                    const active = isActive(item.href);
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
-                          active
-                            ? "bg-[#0B6E4F] text-white shadow-[0_10px_20px_rgba(11,110,79,0.25)]"
-                            : "text-[var(--lagecto-text)] hover:bg-[#0B6E4F]/8"
-                        }`}
-                      >
-                        <Icon size={18} />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </div>
+        <aside className={`sticky top-[61px] hidden h-[calc(100vh-61px)] shrink-0 p-3 lg:flex ${collapsed ? "w-[88px]" : "w-[288px]"}`}>
+          <div className="app-sidebar flex h-full w-full flex-col overflow-hidden p-3">
+            <div className={`mb-3 flex items-center gap-3 rounded-2xl bg-white/10 px-3 py-3 ${collapsed ? "justify-center px-2" : ""}`}>
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-[#FFB000] text-xs font-semibold text-[#12241c]">
+                {initials}
               </div>
-            ))}
+              {collapsed ? null : (
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{profile.name || profile.username || "Account"}</p>
+                  <p className="truncate text-[11px] capitalize text-[#FFB000]">{roleLabel}</p>
+                </div>
+              )}
+            </div>
+            <NavMenu
+              groups={groups}
+              home={home}
+              pathname={pathname}
+              collapsed={collapsed}
+              badges={badges}
+              lockedFor={lockedFor}
+              onLogout={() => void logout()}
+            />
             <button
               type="button"
-              onClick={logout}
-              className="mt-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm text-[#C2413B] hover:bg-red-50"
+              onClick={toggleCollapsed}
+              className="mt-2 flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs text-white/70 hover:bg-white/10"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <LogOut size={18} />
-              Log out
+              {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+              {collapsed ? null : "Collapse"}
             </button>
-          </nav>
+          </div>
         </aside>
 
         <main id="main" className="lg-page min-w-0 flex-1 px-4 py-6 pb-[calc(7.5rem+env(safe-area-inset-bottom))] lg:px-8 lg:pb-10">
@@ -336,57 +418,68 @@ export function AppShell({
       </div>
 
       {open ? (
-        <div className="fixed inset-0 z-40 bg-[#12241c]/40 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)}>
-          <aside className="h-full w-[82%] max-w-sm overflow-y-auto bg-[var(--lagecto-ivory)] p-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-40 bg-[#12241c]/50 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)}>
+          <aside className="app-sidebar flex h-full w-[86%] max-w-sm flex-col overflow-hidden p-4" onClick={(e) => e.stopPropagation()} style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
             <div className="mb-4 flex items-center justify-between">
-              <span className="font-semibold">{BRAND.name}</span>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close navigation">
+              <div className="flex items-center gap-2">
+                <Logo size={36} />
+                <span className="font-semibold text-white">{BRAND.name}</span>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close navigation" className="grid h-10 w-10 place-items-center rounded-xl text-white">
                 <X />
               </button>
             </div>
-            <nav className="grid gap-4">
-              {groups.map((group) => (
-                <div key={group.title}>
-                  <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--lagecto-muted)]">{group.title}</p>
-                  {group.items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="block rounded-xl px-3 py-2.5 hover:bg-[#0B6E4F]/8"
-                      onClick={() => setOpen(false)}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              ))}
-            </nav>
+            <div className="mb-4 flex items-center gap-3 rounded-2xl bg-white/10 px-3 py-3">
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-[#FFB000] text-xs font-semibold text-[#12241c]">
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">{profile.name || profile.username || "Account"}</p>
+                <p className="truncate text-[11px] capitalize text-[#FFB000]">{roleLabel}</p>
+              </div>
+            </div>
+            <NavMenu
+              groups={groups}
+              home={home}
+              pathname={pathname}
+              collapsed={false}
+              badges={badges}
+              lockedFor={lockedFor}
+              onNavigate={() => setOpen(false)}
+              onLogout={() => void logout()}
+            />
           </aside>
         </div>
       ) : null}
 
-      <nav
-        className="fixed inset-x-3 z-30 mx-auto grid max-w-lg grid-cols-5 rounded-[28px] border border-[var(--lagecto-border)] bg-[color-mix(in_srgb,var(--lagecto-ivory)_92%,transparent)] px-1 py-2 shadow-[0_18px_40px_rgba(18,36,28,0.16)] backdrop-blur-xl lg:hidden"
-        style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-        aria-label="Mobile"
-      >
-        {mobile.map((item) => {
-          const Icon = item.icon;
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-2xl py-1 text-[11px] ${active ? "text-[#0B6E4F]" : "text-[var(--lagecto-muted)]"}`}
-            >
-              <span className={`grid h-8 w-8 place-items-center rounded-2xl ${active ? "bg-[#0B6E4F]/12" : ""}`}>
+      {mobile.length ? (
+        <nav
+          className="fixed inset-x-3 z-30 mx-auto grid max-w-lg gap-1 rounded-[var(--lg-radius)] border border-[var(--lagecto-border)] bg-[var(--lagecto-ivory)] px-1.5 py-1.5 lg:hidden"
+          style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))", gridTemplateColumns: `repeat(${mobile.length}, minmax(0, 1fr))` }}
+          aria-label="Mobile"
+        >
+          {mobile.map((item) => {
+            const Icon = ICONS[item.icon];
+            const active = isNavActive(pathname, item.href, home);
+            const count = badgeCount(item, badges);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-2xl py-1 text-[10px] font-medium ${active ? "bg-[#0B6E4F] text-white" : "text-[var(--lagecto-muted)]"}`}
+              >
                 <Icon size={18} />
-              </span>
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
+                {item.shortLabel || item.label}
+                {count ? (
+                  <span className="absolute right-2 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#C2413B] px-1 text-[9px] font-semibold text-white">
+                    {count > 9 ? "9+" : count}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </nav>
+      ) : null}
     </div>
   );
 }

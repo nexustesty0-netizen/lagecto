@@ -116,6 +116,16 @@ const ICONS: Record<string, LucideIcon> = {
   all: LayoutGrid,
 };
 
+export function resolveCategoryIconSlug(value?: string | null) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "other";
+  if (ICONS[raw]) return raw;
+  const compact = raw.replace(/[\s-]+/g, "_");
+  if (ICONS[compact]) return compact;
+  const match = SHOP_CATEGORIES.find((category) => category.slug === raw || category.label.toLowerCase() === raw);
+  return match?.slug || "other";
+}
+
 export function CategoryIcon({
   slug,
   className = "h-4 w-4",
@@ -123,8 +133,38 @@ export function CategoryIcon({
   slug?: string | null;
   className?: string;
 }) {
-  const Icon = ICONS[String(slug || "other")] || LayoutGrid;
+  const Icon = ICONS[resolveCategoryIconSlug(slug)] || LayoutGrid;
   return <Icon className={className} aria-hidden />;
+}
+
+export function ServiceIconPicker({
+  value,
+  onChange,
+}: {
+  value?: string | null;
+  onChange: (slug: string) => void;
+}) {
+  return (
+    <div className="grid max-h-48 grid-cols-6 gap-1.5 overflow-y-auto sm:grid-cols-8">
+      {SHOP_CATEGORIES.map((category) => {
+        const active = resolveCategoryIconSlug(value) === category.slug && Boolean(value);
+        return (
+          <button
+            key={category.slug}
+            type="button"
+            title={category.label}
+            onClick={() => onChange(category.slug)}
+            className={`grid h-11 place-items-center rounded-xl border ${
+              active ? "border-[#0B6E4F] bg-[#0B6E4F] text-white" : "border-[var(--lagecto-border)] bg-white text-[#0B6E4F]"
+            }`}
+          >
+            <CategoryIcon slug={category.slug} className="h-5 w-5" />
+            <span className="sr-only">{category.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function CategorySelect({

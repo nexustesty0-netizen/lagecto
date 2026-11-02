@@ -4,7 +4,10 @@ import { CartClient } from "@/components/cart/CartClient";
 export default function CartPage() {
   return (
     <>
-      <PageHeader title="Cart" subtitle="Checkout via WhatsApp. You can order without an account if you add your name." />
+      <PageHeader
+        title="Shopping cart"
+        subtitle="Review items, then check out with each shop."
+      />
       <CartClient />
     </>
   );

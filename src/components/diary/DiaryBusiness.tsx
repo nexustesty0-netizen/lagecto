@@ -30,7 +30,7 @@ export function DiaryBusiness({ basePath }: { basePath: string }) {
       </section>
       <div className="grid gap-3 sm:grid-cols-2">
         {cards.map((card) => (
-          <Link key={card.href} href={card.href} className="lg-card flex items-center gap-4 p-4 transition hover:-translate-y-0.5">
+          <Link key={card.href} href={card.href} className="lg-card flex items-center gap-4 p-4">
             <div className="w-16 shrink-0">
               <DiaryArt src={card.art} size={96} />
             </div>

@@ -2,6 +2,15 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { SHOP_CATEGORIES, categoryLabel } from "@/lib/brand";
 import { isSupabaseConfigured } from "@/lib/env";
 import { shopIsOpenNow } from "@/lib/hours";
+import { productImage } from "@/lib/placeholder-cover";
+
+export {
+  PLACEHOLDER_COVER,
+  isPlaceholderCover,
+  imageForCategory,
+  hasProductPhoto,
+} from "@/lib/placeholder-cover";
+export { productImage };
 
 export const MARKETPLACE_IMAGES = {
   formalShoes: "/marketplace/product-formal-shoes.png",
@@ -22,37 +31,6 @@ export const MARKETPLACE_CATEGORIES = [
   ...SHOP_CATEGORIES,
 ] as const;
 
-const CATEGORY_IMAGES: Record<string, string> = {
-  electronics: MARKETPLACE_IMAGES.electronics,
-  phones: MARKETPLACE_IMAGES.electronics,
-  computers: MARKETPLACE_IMAGES.electronics,
-  hardware: MARKETPLACE_IMAGES.electronics,
-  software: MARKETPLACE_IMAGES.electronics,
-  fashion: MARKETPLACE_IMAGES.fashion,
-  grocery: MARKETPLACE_IMAGES.groceries,
-  food: MARKETPLACE_IMAGES.groceries,
-  restaurant: MARKETPLACE_IMAGES.groceries,
-  bakery: MARKETPLACE_IMAGES.groceries,
-  butchery: MARKETPLACE_IMAGES.groceries,
-  farming: MARKETPLACE_IMAGES.farming,
-  gardening: MARKETPLACE_IMAGES.farming,
-  home: MARKETPLACE_IMAGES.home,
-  furniture: MARKETPLACE_IMAGES.home,
-  construction: MARKETPLACE_IMAGES.home,
-  plumbing: MARKETPLACE_IMAGES.home,
-  electrical: MARKETPLACE_IMAGES.home,
-  beauty: MARKETPLACE_IMAGES.beauty,
-  salon: MARKETPLACE_IMAGES.beauty,
-  spa: MARKETPLACE_IMAGES.beauty,
-  health: MARKETPLACE_IMAGES.health,
-  pharmacy: MARKETPLACE_IMAGES.health,
-  fitness: MARKETPLACE_IMAGES.health,
-  photography: MARKETPLACE_IMAGES.home,
-  videography: MARKETPLACE_IMAGES.electronics,
-  graphic_design: MARKETPLACE_IMAGES.fashion,
-  services: MARKETPLACE_IMAGES.shopsHero,
-  other: MARKETPLACE_IMAGES.home,
-};
 
 export type PublicProduct = {
   id: string;
@@ -252,16 +230,6 @@ const FALLBACK_FAQS: PublicFaq[] = [
   },
 ];
 
-export function imageForCategory(category?: string | null) {
-  const key = String(category || "other").toLowerCase();
-  return CATEGORY_IMAGES[key] || CATEGORY_IMAGES.other;
-}
-
-export function productImage(image?: string | null, category?: string | null) {
-  if (image && /^(https?:\/\/|\/)/.test(image)) return image;
-  return imageForCategory(category);
-}
-
 function asShop(value: unknown): { id: string; name: string; slug?: string | null; status?: string; logo_url?: string | null } | null {
   if (!value) return null;
   if (Array.isArray(value)) return (value[0] as { id: string; name: string; slug?: string | null }) ?? null;
@@ -311,7 +279,7 @@ export async function getPublicProducts(options?: {
     if (options?.popular) query = query.eq("is_popular", true);
 
     query = query.order("is_popular", { ascending: false }).order("created_at", { ascending: false });
-    if (options?.limit) query = query.limit(options.limit);
+    query = query.limit(options?.limit || 48);
 
     const { data, error } = await query;
     if (error || !data) return [];
@@ -340,8 +308,6 @@ export async function getPublicProducts(options?: {
 export async function getPublicShops(options?: { q?: string; category?: string }) {
   if (!isSupabaseConfigured()) return [];
   try {
-    const { expireDueSubscriptions } = await import("@/lib/entitlements");
-    await expireDueSubscriptions();
     const supabase = await createServerSupabase();
     let query = supabase
       .from("shops")
@@ -349,7 +315,8 @@ export async function getPublicShops(options?: { q?: string; category?: string }
         "id, name, slug, category, address, avg_rating, total_reviews, is_open, auto_close, opening_hours, logo_url, banner_url, verification_status, about",
       )
       .eq("status", "active")
-      .order("name");
+      .order("name")
+      .limit(80);
 
     const q = safeSearch(options?.q);
     if (q) query = query.ilike("name", `%${q}%`);
@@ -410,7 +377,7 @@ export async function getPublicShopProducts(shopId: string) {
     const supabase = await createServerSupabase();
     const { data } = await supabase
       .from("products")
-      .select("id, name, price, image, category, type, description, is_popular")
+      .select("id, name, price, image, category, type, description, is_popular, stock, availability")
       .eq("shop_id", shopId)
       .eq("is_available", true)
       .order("name");

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/lib/api-error";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiProfile } from "@/lib/auth/session";
+import { requireApiAdminLevel } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
-  const auth = await requireApiProfile("admin");
+  const auth = await requireApiAdminLevel("admin");
   if (!auth.ok) return auth.error;
   const body = await request.json().catch(() => ({}));
   const action = String(body.action || "save");
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
 
   if (action === "clear") {
     const { data, error } = await supabase.rpc("clear_platform_expenses");
-    if (error) return NextResponse.json({ error: error.message || "Unable to clear expenses." }, { status: 400 });
+    if (error) return jsonError("admin.expenses.clear", "Unable to clear expenses.", 400, error);
     if (data?.ok === false) return NextResponse.json({ error: data.error }, { status: 400 });
     return NextResponse.json(data);
   }

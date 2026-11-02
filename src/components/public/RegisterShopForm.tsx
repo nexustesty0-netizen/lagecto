@@ -94,7 +94,7 @@ export function RegisterShopForm({ selfServe }: { selfServe: boolean }) {
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#0B6E4F]">Shop created</p>
         <h2 className="text-2xl font-semibold">{shopName} is ready</h2>
         <p className="text-sm text-[#6B7280]">
-          Save this Shop ID. Use it with the password you just set to sign in. You are on the unpaid Free plan — for now every shop tool is included.
+          Save this Shop ID. Use it with the password you just set to sign in. Founding listing lasts 1 month and 3 weeks, then you have 5 days to pay.
         </p>
         <p className="break-all rounded-2xl bg-[#F7F3E3] px-4 py-4 text-center font-mono text-xl font-semibold text-[#0B6E4F]">{shopId}</p>
         <Link href="/login" className="min-h-11 rounded-xl bg-[#0B6E4F] px-4 py-3 text-center font-semibold text-white">
@@ -118,7 +118,7 @@ export function RegisterShopForm({ selfServe }: { selfServe: boolean }) {
         <CategoryPicker name="category" />
         <label className="grid min-w-0 gap-1 text-sm">
           Phone
-          <input name="phone" required className="min-w-0 rounded-xl border px-3 py-3" autoComplete="tel" placeholder="0771234567" />
+          <input name="phone" required className="min-w-0 rounded-xl border px-3 py-3" autoComplete="tel" placeholder="+27 82 123 4567" />
         </label>
         <label className="grid min-w-0 gap-1 text-sm">
           Email{selfServe ? "" : " (optional)"}

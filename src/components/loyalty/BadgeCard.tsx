@@ -57,14 +57,15 @@ export function ShopBadgePills({
   badges?: { slug: string; name: string }[] | null;
   tone?: "onLight" | "onDark";
 }) {
-  if (!badges?.length) return null;
+  const visible = (badges || []).filter((badge) => badge.slug !== "founding_shop" && !/founding/i.test(badge.name || ""));
+  if (!visible.length) return null;
   const pill =
     tone === "onDark"
       ? "rounded-full bg-white/18 px-2 py-0.5 text-[11px] font-semibold text-white"
       : "rounded-full bg-[#0B6E4F]/10 px-2 py-0.5 text-[11px] font-semibold text-[#0B6E4F]";
   return (
     <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Shop achievements">
-      {badges.slice(0, 3).map((badge) => (
+      {visible.slice(0, 3).map((badge) => (
         <li key={badge.slug} className={pill}>
           {badge.slug === "verified_shop" ? "Verified" : badge.name}
         </li>

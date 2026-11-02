@@ -1,10 +1,10 @@
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/primitives";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { BadgeAdminClient } from "@/components/admin/BadgeAdminClient";
 
 export default async function AdminBadgesPage() {
-  await requireRole("admin");
+  await requireAdminLevel("admin");
   const supabase = await createServerSupabase();
   const { data: badges } = await supabase
     .from("customer_badge_definitions")

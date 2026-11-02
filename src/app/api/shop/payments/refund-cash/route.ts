@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiShop } from "@/lib/auth/session";
+import { requireApiShopManage } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
-  const auth = await requireApiShop();
+  const auth = await requireApiShopManage();
   if (!auth.ok) return auth.error;
   const body = await request.json().catch(() => ({}));
   const supabase = await createServerSupabase();

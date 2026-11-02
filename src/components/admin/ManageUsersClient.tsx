@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SHOP_PROVIDER_TYPES, isPlatformOwnerEmail } from "@/lib/brand";
 import { CategorySelect } from "@/components/ui/CategoryIcon";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { adminRoleLabel, canAssignSuperAdmin, canDeleteUsers, isManager, normalizeAdminRole } from "@/lib/admin-access";
 
 type UserRow = {
   id: string;
@@ -28,18 +30,24 @@ export function ManageUsersClient({
   shops,
   currentUserId,
   currentAdminRole,
+  currentUserEmail,
 }: {
   users: UserRow[];
   shops: ShopOption[];
   currentUserId: string;
   currentAdminRole?: string | null;
+  currentUserEmail?: string | null;
 }) {
+  const viewer = { admin_role: normalizeAdminRole(currentAdminRole), email: currentUserEmail };
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [assigning, setAssigning] = useState<string | null>(null);
   const [result, setResult] = useState("");
+  const [pendingRevert, setPendingRevert] = useState<UserRow | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<UserRow | null>(null);
+  const viewerCanDelete = canDeleteUsers(viewer);
 
   const shopsByOwner = useMemo(() => {
     const map = new Map<string, ShopOption>();
@@ -49,13 +57,16 @@ export function ManageUsersClient({
     return map;
   }, [shops]);
 
+  const managerOnly = isManager(viewer);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
     return users.filter((user) =>
-      [user.name, user.email, user.username, user.role].some((value) => String(value || "").toLowerCase().includes(q)),
+      [user.name, managerOnly ? null : user.email, user.username, user.role].some((value) =>
+        String(value || "").toLowerCase().includes(q),
+      ),
     );
-  }, [users, query]);
+  }, [users, query, managerOnly]);
 
   async function call(action: string, payload: Record<string, unknown>, key: string) {
     setError("");
@@ -74,6 +85,8 @@ export function ManageUsersClient({
     }
     if (data.login_shop_id) {
       setResult(`${data.shop_name || "Shop"} created. Shop ID: ${data.login_shop_id}`);
+    } else if (action === "delete") {
+      setResult("User deleted.");
     }
     setAssigning(null);
     router.refresh();
@@ -85,7 +98,7 @@ export function ManageUsersClient({
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search name, email or username"
+        placeholder={managerOnly ? "Search name or username" : "Search name, email or username"}
         className="max-w-md rounded-xl border px-3 py-2"
       />
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -98,6 +111,7 @@ export function ManageUsersClient({
               <th>Role</th>
               <th>Admin</th>
               <th>Assign shop</th>
+              {viewerCanDelete ? <th>Delete</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -105,13 +119,14 @@ export function ManageUsersClient({
               const self = user.id === currentUserId;
               const platformOwner = isPlatformOwnerEmail(user.email);
               const locked = self || platformOwner;
-              const managerOnly = currentAdminRole === "manager";
+              const viewerCanAssignSuper = canAssignSuperAdmin(viewer);
+              const userAdminRole = normalizeAdminRole(user.admin_role);
               const owned = shopsByOwner.get(user.id);
               return (
                 <tr key={user.id}>
                   <td>
                     <p className="font-medium">{user.name || user.username || "Unnamed"}</p>
-                    <p className="text-xs text-[#6B7280]">{user.email}</p>
+                    {user.email ? <p className="text-xs text-[#6B7280]">{user.email}</p> : null}
                     <p className="text-xs text-[#6B7280]">{user.username}</p>
                     {platformOwner ? (
                       <p className="mt-1 text-xs font-semibold text-[#0B6E4F]">Platform admin only</p>
@@ -127,13 +142,17 @@ export function ManageUsersClient({
                       <p className="text-sm">{user.role.replace("_", " ")}</p>
                     ) : (
                     <select
-                      defaultValue={platformOwner ? "admin" : user.role}
+                      value={platformOwner ? "admin" : user.role}
                       disabled={locked}
                       className="rounded-lg border px-2 py-1 text-sm disabled:opacity-50"
                       onChange={(event) => {
                         const role = event.target.value;
                         if (role === "shop_owner") {
                           setAssigning(user.id);
+                          return;
+                        }
+                        if (role === "customer" && user.role === "shop_owner") {
+                          setPendingRevert(user);
                           return;
                         }
                         call("set_role", { userId: user.id, role, adminRole: user.admin_role }, user.id);
@@ -147,23 +166,22 @@ export function ManageUsersClient({
                   </td>
                   <td>
                     {user.role === "admin" || platformOwner ? (
-                      platformOwner || managerOnly ? (
+                      platformOwner || managerOnly || (userAdminRole === "super_admin" && !viewerCanAssignSuper) ? (
                         <p className="text-sm font-medium text-[#0B6E4F]">
-                          {platformOwner ? "Super Admin" : user.admin_role?.replace("_", " ") || "admin"}
+                          {platformOwner ? "Super admin" : adminRoleLabel(userAdminRole)}
                         </p>
                       ) : (
                       <select
-                        defaultValue={user.admin_role || "staff"}
+                        value={userAdminRole}
                         disabled={locked}
                         className="rounded-lg border px-2 py-1 text-sm disabled:opacity-50"
                         onChange={(event) =>
                           call("set_role", { userId: user.id, role: "admin", adminRole: event.target.value }, `${user.id}-admin`)
                         }
                       >
-                        <option value="super_admin">Super Admin</option>
+                        {viewerCanAssignSuper ? <option value="super_admin">Super admin</option> : null}
+                        <option value="admin">Admin</option>
                         <option value="manager">Manager</option>
-                        <option value="staff">Staff</option>
-                        <option value="clerk">Clerk</option>
                       </select>
                       )
                     ) : (
@@ -257,12 +275,60 @@ export function ManageUsersClient({
                     </div>
                     )}
                   </td>
+                  {viewerCanDelete ? (
+                    <td>
+                      {self || platformOwner ? (
+                        <p className="text-xs text-[#6B7280]">{self ? "This is you" : "Protected"}</p>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={busy === `${user.id}-delete`}
+                          className="rounded-lg border border-[#C2413B]/30 px-2 py-1 text-sm font-semibold text-[#C2413B] disabled:opacity-50"
+                          onClick={() => setPendingDelete(user)}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={Boolean(pendingRevert)}
+        title="Revert this shop to a customer?"
+        body={
+          pendingRevert
+            ? `${shopsByOwner.get(pendingRevert.id)?.name || pendingRevert.name || "This shop"} will be removed from the public shops list, and this user will become a customer.`
+            : ""
+        }
+        confirmLabel="Revert to customer"
+        onCancel={() => setPendingRevert(null)}
+        onConfirm={() => {
+          const user = pendingRevert;
+          setPendingRevert(null);
+          if (user) void call("set_role", { userId: user.id, role: "customer", adminRole: null }, user.id);
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Delete this user?"
+        body={
+          pendingDelete
+            ? `${pendingDelete.name || pendingDelete.email || "This user"} will be permanently removed. If they own a shop, that shop is deleted too. This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete user"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const user = pendingDelete;
+          setPendingDelete(null);
+          if (user) void call("delete", { userId: user.id }, `${user.id}-delete`);
+        }}
+      />
     </div>
   );
 }

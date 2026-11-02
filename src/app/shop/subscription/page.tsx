@@ -2,11 +2,15 @@ import { loadOwnedShopWithFeatures } from "@/lib/entitlements";
 import { PageHeader, StatusBadge } from "@/components/ui/primitives";
 import { money, formatDate } from "@/lib/format";
 import { DURATION_LABELS, FEATURE_LABELS, FREE_PLAN_HIGHLIGHTS, PACKAGE_META } from "@/lib/packages";
+import { loadLivePackagePrices } from "@/lib/packages.server";
 import { ShopStatusCard } from "@/components/shop/ShopStatusCard";
 import { PackagePicker } from "@/components/shop/PackagePicker";
 
 export default async function ShopSubscriptionPage() {
-  const { shop, subscription, features } = await loadOwnedShopWithFeatures();
+  const [{ shop, subscription, features }, prices] = await Promise.all([
+    loadOwnedShopWithFeatures(),
+    loadLivePackagePrices(),
+  ]);
   if (!shop) return null;
   const meta = PACKAGE_META[subscription.packageKey];
   return (
@@ -40,20 +44,24 @@ export default async function ShopSubscriptionPage() {
           </ul>
         </article>
       ) : (
-        <article className="lg-card mb-8 min-w-0 overflow-hidden p-5">
-          <p className="font-semibold">Included on Free</p>
-          <p className="mt-2 text-sm text-[#6B7280]">Every shop tool is included on Free for now.</p>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {FREE_PLAN_HIGHLIGHTS.map((item) => (
-              <li key={item} className="rounded-full border border-[#E5E7EB] bg-white px-3 py-1.5 text-sm">
-                {item}
-              </li>
-            ))}
-          </ul>
+        <article className="mb-8 min-w-0 overflow-hidden rounded-[24px] border border-[var(--lagecto-border)] bg-white shadow-[var(--lg-shadow)]">
+          <div className="h-1.5 bg-[#0B6E4F]" />
+          <div className="p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--lagecto-muted)]">Always included</p>
+            <p className="mt-2 font-semibold">Included on Free</p>
+            <p className="mt-2 text-sm text-[#6B7280]">Every shop tool is included on Free for now.</p>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              {FREE_PLAN_HIGHLIGHTS.map((item) => (
+                <li key={item} className="rounded-2xl bg-[#E8F4EE] px-3 py-2 text-sm">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
         </article>
       )}
       <h2 className="mb-4 text-xl font-semibold">Choose a package</h2>
-      <PackagePicker shopName={shop.name} currentPackage={subscription.packageKey} requestHref />
+      <PackagePicker shopName={shop.name} currentPackage={subscription.packageKey} requestHref prices={prices} />
     </>
   );
 }

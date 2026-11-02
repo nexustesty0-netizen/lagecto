@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { SupportRouter } from "@/components/support/SupportRouter";
 
-export const metadata: Metadata = { title: "Help & Support" };
+export const metadata: Metadata = {
+  title: "Help & Support",
+  description: "FAQs, contact, terms, privacy and support for LaGecto customers and shop owners.",
+};
 
 export default async function SupportPage({
   params,

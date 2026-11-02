@@ -27,7 +27,15 @@ export default async function ShopQuotationsPage() {
         }
       />
       {!quotes?.length ? (
-        <EmptyState title="No quotations yet" body="Create a formal quote, proposal, estimate, letterhead, or quick quote." />
+        <EmptyState
+          title="No quotations yet"
+          body="Create a formal quote, proposal, estimate, letterhead, or quick quote."
+          action={
+            <Link href="/shop/quotations/new" className="inline-flex rounded-full bg-[#0B6E4F] px-4 py-2 text-sm font-semibold text-white">
+              New quotation
+            </Link>
+          }
+        />
       ) : (
         <div className="grid gap-3">
           {quotes.map((quote) => (

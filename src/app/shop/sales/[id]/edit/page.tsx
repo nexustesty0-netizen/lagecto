@@ -1,17 +1,19 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getOwnedShop } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/primitives";
 import { SaleEditor } from "@/components/shop/SaleEditor";
+import { staffCanManage } from "@/lib/shop/staff";
 
 export default async function EditSalePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { shop } = await getOwnedShop();
+  const { shop, staffRole } = await getOwnedShop();
   if (!shop) return null;
   const { id } = await params;
+  if (!staffCanManage(staffRole)) redirect(`/shop/sales/${id}`);
   const supabase = await createServerSupabase();
   const { data: sale } = await supabase.from("sales").select("*").eq("id", id).eq("shop_id", shop.id).maybeSingle();
   if (!sale) notFound();

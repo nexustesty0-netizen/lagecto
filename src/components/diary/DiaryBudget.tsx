@@ -75,7 +75,7 @@ export function DiaryBudget({ rows, userId }: { rows: Row[]; userId: string }) {
         </div>
         <div className="mt-4 h-3 overflow-hidden rounded-full bg-[#ece6d6]">
           <div className="diary-progress h-full">
-            <span style={{ width: `${spendPct}%`, background: "linear-gradient(90deg,#c47b12,#0b6e4f)" }} />
+            <span style={{ width: `${spendPct}%`, background: "#0B6E4F" }} />
           </div>
         </div>
         {byCategory.length ? (

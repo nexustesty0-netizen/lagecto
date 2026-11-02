@@ -2,31 +2,28 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/primitives";
 import { ChatClient } from "@/components/chat/ChatClient";
-import { attachUnread } from "@/lib/chat";
+import { loadChatInbox, loadChatMessages } from "@/lib/chat";
+import { asUuid } from "@/lib/chat-privacy";
 
 export default async function CustomerChatPage({ searchParams }: { searchParams: Promise<{ c?: string }> }) {
   const profile = await requireRole("customer");
   const { c } = await searchParams;
   const supabase = await createServerSupabase();
-  const { data: conversations } = await supabase
-    .from("chat_conversations")
-    .select("id, kind, shop_id, customer_id, can_reply, title, created_at, last_message_at, last_message_preview, shops(name, logo_url)")
-    .eq("customer_id", profile.id)
-    .order("last_message_at", { ascending: false });
-  const withUnread = await attachUnread(supabase, conversations || [], profile.id);
-  const active = withUnread.find((row) => row.id === c);
-  const { data: messages } = active
-    ? await supabase.from("chat_messages").select("*").eq("conversation_id", active.id).order("created_at")
-    : { data: [] };
+  const conversations = await loadChatInbox(supabase, "customer", profile.id);
+  const activeId = conversations.some((row) => row.id === asUuid(c)) ? asUuid(c) : null;
+  const messages = activeId ? await loadChatMessages(supabase, activeId, profile.id) : [];
   return (
     <>
-      <PageHeader title="My chats" subtitle="Message shops from a shop page. You cannot search or message other customers. LaGecto announcements have no reply box." />
+      <PageHeader title="My chats" subtitle="Message shops from a shop or product page. You can only see your own conversations." />
       <ChatClient
-        conversations={withUnread}
-        messages={messages || []}
-        activeId={active?.id || null}
+        conversations={conversations}
+        messages={messages}
+        activeId={activeId}
         userId={profile.id}
+        view="customer"
+        basePath="/customer/chat"
         title="My chats"
+        emptyHint="Open a shop or product page and tap Message to start an enquiry."
       />
     </>
   );

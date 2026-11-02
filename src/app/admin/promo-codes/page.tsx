@@ -1,10 +1,10 @@
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/primitives";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { PromoCodeAdminForm } from "@/components/loyalty/PromoCodeForm";
 
 export default async function AdminPromoCodesPage() {
-  await requireRole("admin");
+  await requireAdminLevel("admin");
   const supabase = await createServerSupabase();
   const { data: program } = await supabase.from("loyalty_programs").select("id").eq("scope", "platform").maybeSingle();
   const [{ data: codes }, { data: levels }] = await Promise.all([

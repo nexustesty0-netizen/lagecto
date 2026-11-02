@@ -2,25 +2,30 @@ import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth/session";
 import { buildShopOrderWhatsAppText, shopCheckoutWhatsAppUrl } from "@/lib/checkout/whatsapp-order";
+import { asCartUuid, normalizeCartQty } from "@/lib/cart-math";
+import { jsonError } from "@/lib/api-error";
 
 type CartItemBody = { productId?: string; product_id?: string; quantity?: number; name?: string };
 
 function mapItems(items: CartItemBody[]) {
-  return items.map((item) => ({
-    product_id: item.productId || item.product_id,
-    quantity: Number(item.quantity || 1),
-  }));
+  return items
+    .map((item) => ({
+      product_id: asCartUuid(item.productId || item.product_id),
+      quantity: normalizeCartQty(item.quantity),
+    }))
+    .filter((item): item is { product_id: string; quantity: number } => Boolean(item.product_id && item.quantity > 0))
+    .slice(0, 80);
 }
 
 export async function POST(request: Request) {
   const profile = await getProfile();
   const body = await request.json().catch(() => ({}));
-  const shopId = String(body.shopId || "");
+  const shopId = asCartUuid(body.shopId);
   const items = Array.isArray(body.items) ? mapItems(body.items) : [];
   const guestName = String(body.guestName || "").trim();
   const guestPhone = String(body.guestPhone || "").trim();
   if (!shopId || !items.length) {
-    return NextResponse.json({ error: "Your cart for this shop is empty." }, { status: 400 });
+    return jsonError("cart.checkout", "Your cart for this shop is empty.", 400);
   }
 
   const supabase = await createServerSupabase();
@@ -51,8 +56,8 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   const products = (Array.isArray(data.items) ? data.items : []).map(
-    (item: { name?: string; quantity?: number; price?: number; line_total?: number }) => ({
-      name: String(item.name || "Item"),
+    (item: { name?: string; quantity?: number; price?: number; line_total?: number; availability?: string }) => ({
+      name: `${item.name || "Item"}${item.availability === "on_order" ? " (available on order)" : ""}`,
       quantity: Number(item.quantity || 1),
       lineTotal: Number(item.line_total ?? Number(item.price || 0) * Number(item.quantity || 1)),
     }),

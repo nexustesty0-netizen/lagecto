@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { getPublicSupabaseConfig, isSupabaseConfigured } from "@/lib/env";
+import { absoluteUrl } from "@/lib/share-preview";
 
 export type StorefrontOgShop = {
   id: string;
@@ -59,8 +60,8 @@ export async function getStorefrontOgShop(slug: string): Promise<StorefrontOgSho
 }
 
 export async function imageDataUrl(url?: string | null) {
-  const href = String(url || "").trim();
-  if (!/^https:\/\//i.test(href)) return null;
+  const href = absoluteUrl(url);
+  if (!/^https?:\/\//i.test(href)) return null;
   try {
     const res = await fetch(href, {
       signal: AbortSignal.timeout(4000),

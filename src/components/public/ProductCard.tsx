@@ -5,6 +5,7 @@ import type { PublicProduct } from "@/lib/public-catalog";
 import type { PricedProduct } from "@/lib/marketplace/discovery";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { MediaPreview } from "@/components/media/MediaPreview";
+import { AvailabilityBadge, AvailabilityNote } from "@/components/storefront/AvailabilityNote";
 
 export function ProductCard({
   product,
@@ -22,49 +23,64 @@ export function ProductCard({
   const pct = onSale && list > 0 ? Math.round(((list - unit) / list) * 100) : 0;
 
   return (
-    <article className="group overflow-hidden rounded-2xl bg-[var(--lagecto-ivory)] shadow-[var(--lg-shadow)] ring-1 ring-[var(--lagecto-border)] transition duration-200 hover:-translate-y-1 hover:shadow-[var(--lg-shadow-hover)] sm:rounded-[22px]">
+    <article className="flex h-full flex-col overflow-hidden rounded-[var(--lg-radius)] bg-[var(--lagecto-ivory)] ring-1 ring-[var(--lagecto-border)]">
       <div className="relative aspect-square overflow-hidden bg-[#eee8d8]">
-        <MediaPreview url={product.image} title={product.name} className="absolute inset-0 h-full w-full" interactive={false} />
+        <MediaPreview url={product.image} title={product.name} className="absolute inset-0 h-full w-full" interactive={false} fit="cover" />
         {"isShowcase" in product && product.isShowcase ? (
-          <span className="absolute left-2 top-2 z-[2] rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-[#6B7280] sm:text-[11px]">
+          <span className="absolute left-1.5 top-1.5 z-[2] rounded-full bg-[var(--lagecto-primary)] px-1.5 py-0.5 text-[9px] font-semibold text-white sm:left-2 sm:top-2 sm:px-2 sm:text-[11px]">
             Featured
           </span>
         ) : null}
         {onSale ? (
-          <span className="absolute right-2 top-2 z-[2] rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-semibold text-[#0B6E4F] sm:text-[11px]">
+          <span className="absolute right-1.5 top-1.5 z-[2] rounded-full bg-[var(--lagecto-primary-deep)] px-1.5 py-0.5 text-[9px] font-semibold text-white sm:right-2 sm:top-2 sm:px-2 sm:text-[11px]">
             -{pct}%
           </span>
         ) : null}
+        {"availability" in product ? <AvailabilityBadge availability={product.availability} type={product.type} /> : null}
         <Link href={href} className="absolute inset-0 z-[1]" aria-label={product.name} />
       </div>
-      <Link href={href} className="block p-2.5 pb-0 sm:p-3.5 sm:pb-0">
-        <p className="line-clamp-2 text-sm font-medium leading-tight sm:text-base">{product.name}</p>
-        <p className="mt-0.5 line-clamp-1 text-xs text-[var(--lagecto-muted)] sm:text-sm">{product.shopName}</p>
-        <p className="mt-1 text-sm font-semibold text-[#0B6E4F] sm:mt-2 sm:text-base">
-          {money(unit)}
-          {onSale ? <span className="ml-1 text-xs font-normal text-[var(--lagecto-muted)] line-through sm:ml-2 sm:text-sm">{money(list)}</span> : null}
-        </p>
-      </Link>
-      {shopId ? (
-        <div className="px-2.5 pb-2.5 sm:px-3.5 sm:pb-3.5">
-          <AddToCartButton
-            product={{
-              productId: product.id,
-              shopId,
-              shopName: product.shopName,
-              name: product.name,
-              price: unit,
-              image: product.image,
-              type: product.type,
-            }}
-          />
-        </div>
-      ) : null}
+      <div className="flex flex-1 flex-col p-2 sm:p-3.5">
+        <Link href={href} className="block">
+          <p className="line-clamp-2 min-h-[2.75em] text-[11px] font-semibold leading-snug sm:text-sm">{product.name}</p>
+          <p className="mt-0.5 line-clamp-1 min-h-[1.25em] text-[10px] text-[var(--lagecto-muted)] sm:text-sm">{product.shopName}</p>
+          <p className="mt-1 truncate text-[11px] font-semibold leading-none text-[#0B6E4F] sm:mt-2 sm:text-base">
+            {money(unit)}
+            {onSale ? <span className="ml-1 text-[10px] font-normal text-[var(--lagecto-muted)] line-through sm:ml-2 sm:text-sm">{money(list)}</span> : null}
+          </p>
+          {"availability" in product ? (
+            <AvailabilityNote
+              className="mt-1 line-clamp-1 min-h-[1.25em] text-[10px] sm:text-xs"
+              availability={product.availability}
+              stock={"stock" in product ? product.stock : null}
+              type={product.type}
+            />
+          ) : (
+            <p className="mt-1 min-h-[1.25em]" />
+          )}
+        </Link>
+        {shopId ? (
+          <div className="mt-auto pt-1.5 sm:pt-3">
+            <AddToCartButton
+              product={{
+                productId: product.id,
+                shopId,
+                shopName: product.shopName,
+                name: product.name,
+                price: unit,
+                image: product.image,
+                type: product.type,
+                availability: "availability" in product ? product.availability : undefined,
+                stock: "stock" in product ? product.stock : undefined,
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }
 
-export const PRODUCT_GRID_CLASS = "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4";
+export const PRODUCT_GRID_CLASS = "grid grid-cols-3 items-stretch gap-1.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4";
 
 export function ProductGrid({
   products,
@@ -84,11 +100,11 @@ export function ProductGrid({
 
 export function CatalogEmpty({ title, body, href, label }: { title: string; body: string; href?: string; label?: string }) {
   return (
-    <div className="lg-card p-10 text-center">
+    <div className="lg-card p-8 text-center">
       <p className="font-semibold">{title}</p>
       <p className="mx-auto mt-2 max-w-md text-sm text-[var(--lagecto-muted)]">{body}</p>
       {href && label ? (
-        <Link href={href} className="mt-4 inline-block font-semibold text-[#0B6E4F]">
+        <Link href={href} className="lg-btn mt-4">
           {label}
         </Link>
       ) : null}

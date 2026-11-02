@@ -17,7 +17,10 @@ export type StorefrontStoryShop = {
   instagram_url?: string | null;
   tiktok_url?: string | null;
   linkedin_url?: string | null;
+  twitter_url?: string | null;
   whatsapp_number?: string | null;
+  privacy_policy?: string | null;
+  terms_of_service?: string | null;
 };
 
 function field(form: FormData, name: string) {
@@ -45,7 +48,10 @@ export function StorefrontStoryForm({ shop }: { shop: StorefrontStoryShop }) {
         instagram_url: sanitizeHttpUrl(field(form, "instagram_url")) || null,
         tiktok_url: sanitizeHttpUrl(field(form, "tiktok_url")) || null,
         linkedin_url: sanitizeHttpUrl(field(form, "linkedin_url")) || null,
+        twitter_url: sanitizeHttpUrl(field(form, "twitter_url")) || null,
         whatsapp_number: field(form, "whatsapp_number") || null,
+        privacy_policy: field(form, "privacy_policy") || null,
+        terms_of_service: field(form, "terms_of_service") || null,
       })
       .eq("id", shop.id);
     setMessage(error ? "Unable to save story and links." : "Story and links saved.");
@@ -83,6 +89,7 @@ export function StorefrontStoryForm({ shop }: { shop: StorefrontStoryShop }) {
         <label className="grid gap-1 text-sm">
           Website
           <input name="website_url" defaultValue={shop.website_url || ""} placeholder="https://yourbusiness.com" className="rounded-xl border px-3 py-2" />
+          <span className="text-xs text-[var(--lagecto-muted)]">Shown as a globe icon on your storefront, next to your social links.</span>
         </label>
         <label className="grid gap-1 text-sm">
           Facebook
@@ -105,12 +112,30 @@ export function StorefrontStoryForm({ shop }: { shop: StorefrontStoryShop }) {
           <input name="linkedin_url" defaultValue={shop.linkedin_url || ""} className="rounded-xl border px-3 py-2" />
         </label>
         <label className="grid gap-1 text-sm">
+          X / Twitter
+          <input name="twitter_url" defaultValue={shop.twitter_url || ""} className="rounded-xl border px-3 py-2" />
+        </label>
+        <label className="grid gap-1 text-sm">
           WhatsApp number
-          <input name="whatsapp_number" defaultValue={shop.whatsapp_number || ""} placeholder="+263 71 000 0000" className="rounded-xl border px-3 py-2" />
+          <input name="whatsapp_number" defaultValue={shop.whatsapp_number || ""} placeholder="+27 82 123 4567" className="rounded-xl border px-3 py-2" />
           <span className="text-xs text-[var(--lagecto-muted)]">Used for the storefront WhatsApp button and for checkout.</span>
         </label>
         <button className="rounded-xl bg-[#0B6E4F] px-4 py-2 text-white">Save story and links</button>
         {message ? <p className="text-sm text-[#0B6E4F]">{message}</p> : null}
+      </section>
+      <section className="lg-card grid gap-3 p-5 lg:col-span-2">
+        <h2 className="font-semibold">Privacy and terms</h2>
+        <p className="text-sm text-[var(--lagecto-muted)]">
+          Optional. These appear in your storefront footer and on your shop’s Privacy and Terms pages.
+        </p>
+        <label className="grid gap-1 text-sm">
+          Privacy policy
+          <textarea name="privacy_policy" defaultValue={shop.privacy_policy || ""} className="min-h-36 rounded-xl border px-3 py-2" placeholder="How this shop uses customer information." />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Terms of service
+          <textarea name="terms_of_service" defaultValue={shop.terms_of_service || ""} className="min-h-36 rounded-xl border px-3 py-2" placeholder="How orders, refunds and visits work with this shop." />
+        </label>
       </section>
     </form>
   );

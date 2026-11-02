@@ -1,9 +1,9 @@
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/primitives";
 import { AdminPosClient } from "@/components/admin/AdminPosClient";
 
 export default async function AdminPosPage() {
-  await requireRole("admin");
+  await requireAdminLevel("admin");
   return (
     <>
       <PageHeader

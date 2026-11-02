@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { HorizontalBars } from "@/components/ui/charts";
 
 export function OsSurface({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <section className={`os-surface ${className}`}>{children}</section>;
@@ -110,25 +111,7 @@ export function BarChart({
   items: { label: string; value: number }[];
   empty?: string;
 }) {
-  const max = Math.max(...items.map((item) => item.value), 0);
-  if (!items.length || max <= 0) {
-    return <p className="text-sm text-[var(--lagecto-muted)]">{empty}</p>;
-  }
-  return (
-    <ul className="grid gap-3">
-      {items.map((item) => (
-        <li key={item.label}>
-          <div className="mb-1 flex justify-between gap-3 text-sm">
-            <span>{item.label}</span>
-            <span className="font-medium">{item.value}</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-[#efe8d4]">
-            <span className="block h-full rounded-full bg-[#0B6E4F]" style={{ width: `${Math.max(6, (item.value / max) * 100)}%` }} />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
+  return <HorizontalBars items={items} empty={empty} />;
 }
 
 export function CompareBars({
@@ -147,9 +130,9 @@ export function CompareBars({
             <span>{item.label}</span>
             <span className="font-medium">{item.value}</span>
           </div>
-          <div className="h-3 overflow-hidden rounded-full bg-[#efe8d4]">
+          <div className="h-3 overflow-hidden rounded-full bg-[var(--lagecto-cream)]">
             <span
-              className={`block h-full rounded-full ${item.tone === "warn" ? "bg-[#C47B12]" : "bg-[#0B6E4F]"}`}
+              className={`block h-full rounded-full ${item.tone === "warn" ? "bg-[var(--lagecto-warning)]" : "bg-[var(--lagecto-primary)]"}`}
               style={{ width: `${Math.max(4, (item.value / max) * 100)}%` }}
             />
           </div>

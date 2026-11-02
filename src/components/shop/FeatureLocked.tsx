@@ -11,6 +11,11 @@ export function FeatureLocked({ feature, reason }: { feature: string; reason?: "
       <EmptyState
         title={`${label} is turned off`}
         body="LaGecto has disabled this tool for your shop. Your existing records are kept. Contact support if you need it restored."
+        action={
+          <Link href="/support" className="lg-btn">
+            Contact support
+          </Link>
+        }
       />
     );
   }
@@ -18,6 +23,11 @@ export function FeatureLocked({ feature, reason }: { feature: string; reason?: "
     <EmptyState
       title={`Available on ${name}`}
       body={`${label} is included in ${name} and higher. Your shop stays open on Free — upgrade from Subscription to unlock this.`}
+      action={
+        <Link href="/shop/subscription" className="lg-btn">
+          View packages
+        </Link>
+      }
     />
   );
 }

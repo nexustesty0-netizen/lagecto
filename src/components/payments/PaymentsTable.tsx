@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { StatusBadge } from "@/components/ui/primitives";
+import { DataTable, StatusBadge } from "@/components/ui/primitives";
 import { formatDateTime, money } from "@/lib/format";
 import { PAYMENT_METHOD_LABELS, type PaymentMethod } from "@/lib/payments/methods";
 import { ConfirmCashButton } from "@/components/shop/ConfirmCashButton";
@@ -60,7 +60,7 @@ export function PaymentsTable({
 
   return (
     <div className="grid gap-4">
-      <div className="grid gap-2 rounded-2xl bg-white p-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="lg-card grid gap-2 p-4 sm:grid-cols-3 lg:grid-cols-6">
         <select value={method} onChange={(e) => setMethod(e.target.value)} className="rounded-xl border px-3 py-2 text-sm">
           <option value="">All methods</option>
           <option value="visa">Visa</option>
@@ -83,15 +83,14 @@ export function PaymentsTable({
         <input value={minAmount} onChange={(e) => setMinAmount(e.target.value)} placeholder="Min amount" className="rounded-xl border px-3 py-2 text-sm" />
         <input value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} placeholder="Max amount" className="rounded-xl border px-3 py-2 text-sm" />
       </div>
-      <div className="app-table-wrap">
-        <table className="app-table">
+      <DataTable caption="Payments">
           <thead>
             <tr>
               <th>Date</th>
               <th>Order</th>
               {showShop ? <th>Shop</th> : null}
               {showCustomer ? <th>Customer</th> : null}
-              <th>Amount</th>
+              <th className="num">Amount</th>
               <th>Method</th>
               <th>Status</th>
               <th>Reference</th>
@@ -105,7 +104,7 @@ export function PaymentsTable({
                 <td>{relatedOrder(payment.orders)?.order_number || payment.order_id.slice(0, 8)}</td>
                 {showShop ? <td>{relatedShop(payment.shops)?.name || "—"}</td> : null}
                 {showCustomer ? <td>{relatedOrder(payment.orders)?.customer_name || "—"}</td> : null}
-                <td>{money(payment.amount)}</td>
+                <td className="num">{money(payment.amount)}</td>
                 <td>{PAYMENT_METHOD_LABELS[payment.payment_method as PaymentMethod] || payment.payment_method}</td>
                 <td>
                   <StatusBadge value={payment.status} />
@@ -121,8 +120,7 @@ export function PaymentsTable({
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+      </DataTable>
     </div>
   );
 }

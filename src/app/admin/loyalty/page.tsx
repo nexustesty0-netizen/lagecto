@@ -1,4 +1,4 @@
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader, StatCard, ActionTile } from "@/components/ui/primitives";
 import { createServerSupabase } from "@/lib/supabase/server";
 import Link from "next/link";
@@ -6,7 +6,7 @@ import { AdminLoyaltyEditors } from "@/components/admin/AdminLoyaltyEditors";
 import { asOne } from "@/lib/loyalty/load";
 
 export default async function AdminLoyaltyPage() {
-  await requireRole("admin");
+  await requireAdminLevel("admin");
   const supabase = await createServerSupabase();
   const { data } = await supabase.rpc("loyalty_analytics_admin");
   const stats = data || {};

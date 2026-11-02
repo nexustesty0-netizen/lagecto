@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
-import { requireApiProfile, requireApiShop } from "@/lib/auth/session";
+import { clientIp } from "@/lib/format";
+import { requireApiProfile, requireApiShopManage } from "@/lib/auth/session";
 import { createServiceSupabase } from "@/lib/supabase/service";
-import { extensionOf, safeFileStem, validateSniffedUpload, validateUpload, type MediaKind } from "@/lib/media";
+import { getShopSubscription } from "@/lib/entitlements";
+import { catalogDeviceImageLimit, catalogDeviceImageMessage } from "@/lib/packages";
+import {
+  allowsCatalogDeviceImageUpload,
+  countStoredCatalogImages,
+  extensionOf,
+  safeFileStem,
+  validateSniffedUpload,
+  validateUpload,
+  type MediaKind,
+} from "@/lib/media";
 
 const BUCKETS = {
   logo: "shop-media",
@@ -30,10 +41,31 @@ function folderFor(purpose: Purpose, shopId: string) {
 export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   if (!form) return NextResponse.json({ error: "Upload a file." }, { status: 400 });
+  const admin = createServiceSupabase();
+  const allowed = await admin.rpc("check_auth_rate_limit", {
+    p_bucket_key: `upload:${clientIp(request.headers) || "unknown"}`,
+    p_max_hits: 30,
+    p_window_seconds: 10 * 60,
+  });
+  if (allowed.data === false) {
+    return NextResponse.json({ error: "Too many uploads. Please wait a moment." }, { status: 429 });
+  }
   const purpose = String(form.get("purpose") || "") as Purpose;
   if (!BUCKETS[purpose]) return NextResponse.json({ error: "Unknown upload type." }, { status: 400 });
+  if (purpose === "video") {
+    return NextResponse.json(
+      { error: "Videos must be added as a Facebook, Instagram, YouTube, or TikTok URL." },
+      { status: 400 },
+    );
+  }
+  if (purpose === "blog") {
+    return NextResponse.json(
+      { error: "Blog and vlog media must be an image URL or a Facebook, Instagram, YouTube, or TikTok URL." },
+      { status: 400 },
+    );
+  }
 
-  const kind: MediaKind = purpose === "video" ? "video" : "image";
+  const kind: MediaKind = "image";
   const file = form.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "Choose a file." }, { status: 400 });
 
@@ -50,14 +82,27 @@ export async function POST(request: Request) {
     if (!auth.ok) return auth.error;
     shopId = "platform";
   } else {
-    const auth = await requireApiShop();
+    const auth = await requireApiShopManage();
     if (!auth.ok) return auth.error;
     shopId = auth.shop.id;
   }
 
+  if (purpose === "product") {
+    const subscription = await getShopSubscription(shopId, { expire: false });
+    const limit = catalogDeviceImageLimit(subscription.packageKey);
+    const { data: rows } = await admin.from("products").select("image").eq("shop_id", shopId);
+    const withinQuota = allowsCatalogDeviceImageUpload({
+      limit,
+      used: countStoredCatalogImages((rows || []).map((row) => row.image)),
+      currentUrl: String(form.get("currentUrl") || ""),
+    });
+    if (!withinQuota) {
+      return NextResponse.json({ error: catalogDeviceImageMessage(subscription.packageKey) }, { status: 403 });
+    }
+  }
+
   const ext = sniffed.mime === "image/jpeg" ? "jpg" : sniffed.mime.split("/")[1] || extensionOf(file.name) || "bin";
   const path = `${folderFor(purpose, shopId)}/${safeFileStem()}.${ext}`;
-  const admin = createServiceSupabase();
   const { error } = await admin.storage.from(BUCKETS[purpose]).upload(path, buffer, {
     contentType: sniffed.mime,
     upsert: false,

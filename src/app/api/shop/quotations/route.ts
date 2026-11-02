@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { jsonError, publicRpcMessage } from "@/lib/api-error";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiShop } from "@/lib/auth/session";
+import { requireApiShopManage } from "@/lib/auth/session";
 
 function mapItems(items: unknown) {
   if (!Array.isArray(items)) return [];
@@ -16,7 +17,7 @@ function mapItems(items: unknown) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireApiShop();
+  const auth = await requireApiShopManage();
   if (!auth.ok) return auth.error;
   const body = await request.json().catch(() => ({}));
   const supabase = await createServerSupabase();
@@ -24,8 +25,8 @@ export async function POST(request: Request) {
 
   if (action === "delete") {
     const { data, error } = await supabase.rpc("delete_shop_quotation", { p_quotation_id: String(body.id || "") });
-    if (error) return NextResponse.json({ error: error.message || "Unable to delete this quotation." }, { status: 400 });
-    if (data?.ok === false) return NextResponse.json({ error: data.error }, { status: 400 });
+    if (error) return jsonError("shop.quotations.delete", "Unable to delete this quotation.", 400, error);
+    if (data?.ok === false) return NextResponse.json({ error: publicRpcMessage(data.error, "Unable to delete this quotation.") }, { status: 400 });
     return NextResponse.json(data);
   }
 
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       items: mapItems(body.items),
     },
   });
-  if (error) return NextResponse.json({ error: error.message || "Unable to save this quotation." }, { status: 400 });
-  if (data?.ok === false) return NextResponse.json({ error: data.error }, { status: 400 });
+  if (error) return jsonError("shop.quotations.save", "Unable to save this quotation.", 400, error);
+  if (data?.ok === false) return NextResponse.json({ error: publicRpcMessage(data.error, "Unable to save this quotation.") }, { status: 400 });
   return NextResponse.json(data);
 }

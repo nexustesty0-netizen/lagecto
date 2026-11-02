@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/lib/api-error";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiShop } from "@/lib/auth/session";
+import { requireApiShopManage } from "@/lib/auth/session";
 import { normalizePromoCode } from "@/lib/loyalty/promo-math";
 
 export async function POST(request: Request) {
-  const auth = await requireApiShop();
+  const auth = await requireApiShopManage();
   if (!auth.ok) return auth.error;
   const body = await request.json().catch(() => ({}));
   const action = String(body.action || "");
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       is_active: true,
     };
     const { error } = await supabase.from("promo_codes").insert(payload);
-    if (error) return NextResponse.json({ error: error.message || "Unable to create this shop code." }, { status: 400 });
+    if (error) return jsonError("shop.loyalty.promo", "Unable to create this shop code.", 400, error);
     return NextResponse.json({ ok: true });
   }
 

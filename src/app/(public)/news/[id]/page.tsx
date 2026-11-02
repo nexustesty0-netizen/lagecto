@@ -1,26 +1,42 @@
 import { NewsArticle } from "@/components/news/NewsArticle";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { loadPublishedArticle } from "@/lib/news/load";
+import { absoluteUrl, newsSharePath, newsShareUrl, ogImages } from "@/lib/share-preview";
+import { BRAND } from "@/lib/brand";
 import type { Metadata } from "next";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createServerSupabase();
-  const uuid = /^[0-9a-f-]{36}$/i.test(id);
-  const { data } = uuid
-    ? await supabase.from("lagecto_news_articles").select("title, seo_title, seo_description, excerpt").eq("id", id).eq("status", "published").maybeSingle()
-    : await supabase.from("lagecto_news_articles").select("title, seo_title, seo_description, excerpt").eq("slug", id).eq("status", "published").maybeSingle();
-  if (!data) return { title: "News" };
+  const article = await loadPublishedArticle(id);
+  if (!article) return { title: "News" };
+  const title = article.seo_title || article.title;
+  const description = article.seo_description || article.excerpt || `A story from ${BRAND.name} News.`;
+  const url = newsShareUrl(article);
+  const imagePath = `${newsSharePath(article)}/opengraph-image`;
   return {
-    title: data.seo_title || data.title,
-    description: data.seo_description || data.excerpt || undefined,
+    title,
+    description,
+    robots: { index: true, follow: true },
+    alternates: { canonical: url },
+    openGraph: {
+      type: "article",
+      locale: "en_ZW",
+      url,
+      siteName: BRAND.name,
+      title,
+      description,
+      publishedTime: article.published_at || undefined,
+      images: ogImages(article.cover_image_url, title) || ogImages(imagePath, title),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ogImages(article.cover_image_url, title)?.map((item) => item.url) || [absoluteUrl(imagePath)],
+    },
   };
 }
 
 export default async function PublicNewsArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
-      <NewsArticle id={id} hrefBase="/news" />
-    </div>
-  );
+  return <NewsArticle id={id} hrefBase="/news" />;
 }

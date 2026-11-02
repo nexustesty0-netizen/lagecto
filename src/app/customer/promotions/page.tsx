@@ -3,6 +3,7 @@ import { PageHeader, EmptyState } from "@/components/ui/primitives";
 import { loadPublicPromotions, asOne } from "@/lib/loyalty/load";
 import { money, formatDate } from "@/lib/format";
 import Link from "next/link";
+import { AdStrip } from "@/components/ads/AdStrip";
 
 export default async function CustomerPromotionsPage() {
   const profile = await requireRole("customer");
@@ -11,13 +12,22 @@ export default async function CustomerPromotionsPage() {
   return (
     <>
       <PageHeader title="Promotions" subtitle="Only live, in-date offers appear here. Apply codes at checkout — the server calculates the discount." />
+      <AdStrip className="mb-6" />
       {expiring.length ? (
         <p className="mb-4 text-sm text-[#C47B12]">{expiring.length} offer{expiring.length === 1 ? "" : "s"} expire within 48 hours.</p>
       ) : null}
       <section className="mb-10">
         <h2 className="mb-3 text-lg font-semibold">Promo codes</h2>
         {!liveCodes.length ? (
-          <EmptyState title="No live codes" body="When LaGecto or a shop publishes a code you are eligible for, it will show here." />
+          <EmptyState
+            title="No live codes"
+            body="When LaGecto or a shop publishes a code you are eligible for, it will show here."
+            action={
+              <Link href="/marketplace" className="inline-flex rounded-full bg-[#0B6E4F] px-4 py-2 text-sm font-semibold text-white">
+                Browse shops
+              </Link>
+            }
+          />
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {liveCodes.map((code) => {

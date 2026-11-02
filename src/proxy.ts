@@ -1,5 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { applySecurityHeaders, authCookieOptions, isHttpsRequest } from "@/lib/security";
+import { isNoindexPath } from "@/lib/seo-paths.mjs";
 
 function isPrivatePath(pathname: string) {
   return (
@@ -18,10 +20,17 @@ export async function proxy(request: NextRequest) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
     if (isPrivatePath(pathname)) {
-      return NextResponse.redirect(new URL("/login?setup=1", request.url));
+      const redirect = NextResponse.redirect(new URL("/login?setup=1", request.url));
+      applySecurityHeaders(redirect.headers, { hsts: isHttpsRequest(request) });
+      redirect.headers.set("X-Robots-Tag", "noindex, nofollow");
+      return redirect;
     }
+    applySecurityHeaders(response.headers, { hsts: isHttpsRequest(request) });
     return response;
   }
+
+  const secure = isHttpsRequest(request);
+  const cookieDefaults = authCookieOptions(secure);
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {
@@ -34,7 +43,13 @@ export async function proxy(request: NextRequest) {
         });
         response = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
+          response.cookies.set(name, value, {
+            ...options,
+            httpOnly: options?.httpOnly ?? cookieDefaults.httpOnly,
+            sameSite: options?.sameSite ?? cookieDefaults.sameSite,
+            secure: cookieDefaults.secure || Boolean(options?.secure),
+            path: options?.path ?? cookieDefaults.path,
+          });
         });
       },
     },
@@ -49,19 +64,29 @@ export async function proxy(request: NextRequest) {
   if (isPrivate && !user) {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", pathname);
-    return NextResponse.redirect(login);
+    const redirect = NextResponse.redirect(login);
+    applySecurityHeaders(redirect.headers, { hsts: secure });
+    redirect.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return redirect;
   }
 
-  if (user && (pathname === "/login" || pathname === "/signup")) {
-    return NextResponse.redirect(new URL("/app", request.url));
+  if (user && pathname === "/signup" && !request.nextUrl.searchParams.has("logged_out")) {
+    const redirect = NextResponse.redirect(new URL("/app", request.url));
+    applySecurityHeaders(redirect.headers, { hsts: secure });
+    return redirect;
   }
 
-  response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  applySecurityHeaders(response.headers, { hsts: secure });
+  if (isNoindexPath(pathname)) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+  const requestId = request.headers.get("x-request-id")?.trim();
+  if (requestId && requestId.length <= 80 && /^[A-Za-z0-9._-]+$/.test(requestId)) {
+    response.headers.set("x-request-id", requestId);
+  }
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|brand/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|brand/|api/health|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };

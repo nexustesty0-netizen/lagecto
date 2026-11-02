@@ -94,6 +94,8 @@ export function getShopProfitLoss(stats: ShopDashboardStats | null) {
  * Delegates to public.shop_dashboard_stats so every surface uses the same
  * completed-sales / paid-payments / refund rules.
  */
+export { harareDateKey, weekSalesSeries, rankBestSellers } from "./dashboard-math";
+
 export async function getShopDashboardStats(
   shopId: string,
   options?: { period?: DashboardPeriod; from?: string; to?: string },

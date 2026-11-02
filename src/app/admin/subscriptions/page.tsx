@@ -1,11 +1,12 @@
+import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader, EmptyState } from "@/components/ui/primitives";
 import { money } from "@/lib/format";
 import { PlansManager } from "@/components/admin/PlansManager";
 
 export default async function SubscriptionsPage() {
-  await requireRole("admin");
+  await requireAdminLevel("admin");
   const supabase = await createServerSupabase();
   const [{ data: plans }, { data: subs }] = await Promise.all([
     supabase.from("subscription_plans").select("*").order("display_order", { ascending: true }).order("price"),
@@ -18,7 +19,15 @@ export default async function SubscriptionsPage() {
       <PlansManager plans={plans || []} />
       {!subs?.length ? (
         <div className="mt-6">
-          <EmptyState title="No shop subscriptions yet" body="Assign a package from the shops page." />
+          <EmptyState
+            title="No shop subscriptions yet"
+            body="Assign a package from the shops page."
+            action={
+              <Link href="/admin/shops" className="inline-flex rounded-full bg-[#0B6E4F] px-4 py-2 text-sm font-semibold text-white">
+                Manage shops
+              </Link>
+            }
+          />
         </div>
       ) : (
         <div className="app-table-wrap mt-6">

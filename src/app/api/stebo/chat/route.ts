@@ -1,39 +1,14 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { requireApiProfile } from "@/lib/auth/session";
-import { promptForMode } from "@/lib/stebo";
-import { CONTACT } from "@/lib/brand";
-
-type KnowledgeRow = { title: string; body: string; section: string };
-type ExampleRow = { prompt: string; response: string };
-
-function retrieve(question: string, knowledge: KnowledgeRow[], examples: ExampleRow[]) {
-  const q = question.toLowerCase();
-  const scored = knowledge
-    .map((row) => {
-      const hay = `${row.title} ${row.body} ${row.section}`.toLowerCase();
-      const hits = q.split(/\s+/).filter((word) => word.length > 2 && hay.includes(word)).length;
-      return { row, hits };
-    })
-    .filter((item) => item.hits > 0)
-    .sort((a, b) => b.hits - a.hits);
-
-  const example = examples.find((item) => q.includes(item.prompt.toLowerCase().slice(0, 24)));
-  return { snippets: scored.slice(0, 4).map((item) => item.row), example };
-}
-
-function fallbackReply(message: string, snippets: KnowledgeRow[], example: ExampleRow | undefined, personalityName: string) {
-  if (example) return example.response;
-  if (snippets.length) {
-    const body = snippets.map((row) => `${row.title}: ${row.body}`).join("\n\n");
-    return `${personalityName} here. Here's what I know that's relevant:\n\n${body}`;
-  }
-  const q = message.toLowerCase();
-  if (q.includes("support") || q.includes("help") || q.includes("contact")) {
-    return `You can reach LaGecto Support on ${CONTACT.phoneDisplay} or ${CONTACT.email}.`;
-  }
-  return null;
-}
+import {
+  STEBO_BUILTIN_KNOWLEDGE,
+  localReply,
+  promptForMode,
+  retrieve,
+  type SteboExample,
+  type SteboKnowledge,
+} from "@/lib/stebo";
 
 export async function POST(request: Request) {
   try {
@@ -61,8 +36,8 @@ export async function POST(request: Request) {
       supabase.from("stebo_personality_settings").select("display_name, traits").eq("id", 1).maybeSingle(),
     ]);
 
-    const rows = (knowledge || []) as KnowledgeRow[];
-    const exampleRows = (examples || []) as ExampleRow[];
+    const rows = [...STEBO_BUILTIN_KNOWLEDGE, ...((knowledge || []) as SteboKnowledge[])];
+    const exampleRows = (examples || []) as SteboExample[];
     const name = personality?.display_name || "Stebo";
     const { snippets, example } = retrieve(message, rows, exampleRows);
     const apiUrl = process.env.STEBO_API_URL;
@@ -91,29 +66,34 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!reply) reply = fallbackReply(message, snippets, example, name);
-    if (!reply) {
-      return NextResponse.json({
-        error: "Stebo is not configured yet. Add knowledge in the admin Intelligence Center, or set STEBO_API_URL.",
-        setup: true,
-      }, { status: 503 });
-    }
+    if (!reply) reply = localReply(message, snippets, example, name, mode);
 
     let conversationId = String(body.conversationId || "");
-    if (!conversationId) {
-      const { data: conversation, error } = await supabase
+    if (conversationId) {
+      const { data: existing } = await supabase
+        .from("stebo_conversations")
+        .select("id")
+        .eq("id", conversationId)
+        .eq("user_id", auth.profile.id)
+        .maybeSingle();
+      if (!existing?.id) {
+        return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+      }
+    } else {
+      const { data: conversation } = await supabase
         .from("stebo_conversations")
         .insert({ user_id: auth.profile.id, mode, title: message.slice(0, 80) })
         .select("id")
         .single();
-      if (error || !conversation) return NextResponse.json({ error: "Unable to start this conversation." }, { status: 400 });
-      conversationId = conversation.id;
+      conversationId = conversation?.id || "";
     }
 
-    await supabase.from("stebo_messages").insert([
-      { conversation_id: conversationId, role: "user", content: message },
-      { conversation_id: conversationId, role: "assistant", content: reply },
-    ]);
+    if (conversationId) {
+      await supabase.from("stebo_messages").insert([
+        { conversation_id: conversationId, role: "user", content: message },
+        { conversation_id: conversationId, role: "assistant", content: reply },
+      ]);
+    }
 
     return NextResponse.json({ ok: true, reply, conversationId });
   } catch {

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       const identity = Array.isArray(identities) ? identities[0] : identities;
       if (identity?.auth_email && identity?.account_status === "active") {
         await admin.auth.resetPasswordForEmail(identity.auth_email, {
-          redirectTo: `${siteUrl()}/login`,
+          redirectTo: `${siteUrl()}/auth/callback?next=/reset-password`,
         });
         await admin.rpc("log_security_event", {
           p_event_type: "password_reset_requested",

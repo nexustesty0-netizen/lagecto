@@ -6,6 +6,7 @@ import { SHOP_CATEGORIES, SHOP_PROVIDER_TYPES } from "@/lib/brand";
 import { selfServeShopCreationEnabled } from "@/lib/platform-flags.server";
 import { provisionSelfServeShop } from "@/lib/shop/self-serve-create";
 import { EMAIL_RE, validateFullName, validatePassword, validatePhone } from "@/lib/validation";
+import { notifyAdmins } from "@/lib/notify.server";
 
 const CATEGORIES = new Set<string>(SHOP_CATEGORIES.map((item) => item.slug));
 const PROVIDERS = new Set<string>(SHOP_PROVIDER_TYPES.map((item) => item.value));
@@ -149,6 +150,13 @@ export async function POST(request: Request) {
         }
         return NextResponse.json({ error: provisioned.error }, { status: 400 });
       }
+
+      await notifyAdmins({
+        title: "New shop registration",
+        message: `${provisioned.shop_name} opened a shop on LaGecto.`,
+        type: "registration",
+        href: "/admin/shops",
+      });
 
       return NextResponse.json({
         ok: true,

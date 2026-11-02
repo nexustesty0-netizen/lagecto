@@ -1,10 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logAppError } from "@/lib/safe-log";
 
 type ShopRow = {
   id?: string;
   login_shop_id?: string | null;
   name?: string | null;
 };
+
+async function enrollFounding(admin: SupabaseClient, shopId?: string) {
+  if (!shopId) return;
+  const { error } = await admin.rpc("enroll_register_shop_founding", { p_shop_id: shopId });
+  if (error) logAppError("enroll_register_shop_founding", error);
+}
 
 export type SelfServeShopInput = {
   userId: string;
@@ -51,7 +58,7 @@ async function ensurePublicUser(admin: SupabaseClient, input: SelfServeShopInput
     role: "customer",
   });
   if (error && !/duplicate|already exists|23505/i.test(error.message)) {
-    console.error("self-serve insert user", error);
+    logAppError("self-serve insert user", error);
     return false;
   }
   await admin.from("user_settings").insert({ user_id: input.userId });
@@ -115,6 +122,7 @@ export async function provisionSelfServeShop(
   });
 
   if (!rpc.error && rpc.data?.ok && rpc.data.login_shop_id) {
+    await enrollFounding(admin, rpc.data.shop_id);
     return {
       ok: true,
       login_shop_id: String(rpc.data.login_shop_id),
@@ -123,6 +131,7 @@ export async function provisionSelfServeShop(
   }
 
   if (!rpc.error && rpc.data?.login_shop_id) {
+    await enrollFounding(admin, rpc.data.shop_id);
     return {
       ok: true,
       login_shop_id: String(rpc.data.login_shop_id),
@@ -131,7 +140,7 @@ export async function provisionSelfServeShop(
   }
 
   if (rpc.error) {
-    console.error("self_serve_create_shop", rpc.error.message || rpc.error);
+    logAppError("self_serve_create_shop", rpc.error);
   } else if (rpc.data?.ok === false && rpc.data?.error) {
     if (/turned off|not authorized|admin accounts/i.test(String(rpc.data.error))) {
       return { ok: false, error: String(rpc.data.error) };
@@ -147,7 +156,7 @@ export async function provisionSelfServeShop(
     p_role: "shop_owner",
   });
   if (role.error) {
-    console.error("force_user_role", role.error.message || role.error);
+    logAppError("force_user_role", role.error);
   }
 
   const shopRpc = await admin.rpc("ensure_shop_for_owner", {
@@ -160,7 +169,7 @@ export async function provisionSelfServeShop(
 
   let shop = asShop(shopRpc.data);
   if (shopRpc.error || !shop?.login_shop_id) {
-    if (shopRpc.error) console.error("ensure_shop_for_owner", shopRpc.error.message || shopRpc.error);
+    if (shopRpc.error) logAppError("ensure_shop_for_owner", shopRpc.error);
     shop = (await loadOwnedShop(admin, input.userId, input.email)) || shop;
   }
 
@@ -169,6 +178,7 @@ export async function provisionSelfServeShop(
   }
 
   await finishShop(admin, shop, input);
+  await enrollFounding(admin, shop.id);
   return {
     ok: true,
     login_shop_id: String(shop.login_shop_id),

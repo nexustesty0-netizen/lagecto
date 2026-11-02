@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/lib/api-error";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiProfile } from "@/lib/auth/session";
+import { requireApiAdminLevel } from "@/lib/auth/session";
 import { normalizePromoCode } from "@/lib/loyalty/promo-math";
 
 export async function POST(request: Request) {
-  const auth = await requireApiProfile("admin");
+  const auth = await requireApiAdminLevel("admin");
   if (!auth.ok) return auth.error;
   const body = await request.json().catch(() => ({}));
   const action = String(body.action || "");
@@ -96,10 +97,10 @@ export async function POST(request: Request) {
     };
     if (body.id) {
       const { error } = await supabase.from("promo_codes").update(payload).eq("id", body.id);
-      if (error) return NextResponse.json({ error: error.message || "Unable to update code." }, { status: 400 });
+      if (error) return jsonError("admin.loyalty.update", "Unable to update code.", 400, error);
     } else {
       const { error } = await supabase.from("promo_codes").insert(payload);
-      if (error) return NextResponse.json({ error: error.message || "Unable to create code." }, { status: 400 });
+      if (error) return jsonError("admin.loyalty.create", "Unable to create code.", 400, error);
     }
     await supabase.rpc("log_security_event", {
       p_event_type: "admin_promo_save",

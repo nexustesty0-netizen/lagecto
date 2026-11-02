@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { MARKETPLACE_PAYMENTS_DISABLED_MESSAGE, marketplaceOnlinePaymentsEnabled } from "@/lib/payments/config";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiShop } from "@/lib/auth/session";
+import { requireApiShopManage } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
   if (!marketplaceOnlinePaymentsEnabled()) {
     return NextResponse.json({ error: MARKETPLACE_PAYMENTS_DISABLED_MESSAGE }, { status: 410 });
   }
-  const auth = await requireApiShop();
+  const auth = await requireApiShopManage();
   if (!auth.ok) return auth.error;
   const body = await request.json().catch(() => ({}));
   const methods = Array.isArray(body.methods) ? body.methods : [];

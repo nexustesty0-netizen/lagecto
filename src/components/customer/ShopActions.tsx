@@ -22,6 +22,11 @@ export function SaveShopButton({ shopId, saved }: { shopId: string; saved: boole
   );
 }
 
+function loginNext() {
+  if (typeof window === "undefined") return "/login";
+  return `/login?next=${encodeURIComponent(window.location.pathname)}`;
+}
+
 export function BookingForm({ shopId, services }: { shopId: string; services: { id: string; name: string }[] }) {
   const router = useRouter();
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -31,6 +36,10 @@ export function BookingForm({ shopId, services }: { shopId: string; services: { 
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    if (!user) {
+      router.push(loginNext());
+      return;
+    }
     await supabase.from("service_bookings").insert({
       shop_id: shopId,
       product_id: form.get("product_id") || null,
@@ -68,6 +77,10 @@ export function RequestForm({ shopId }: { shopId: string }) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    if (!user) {
+      router.push(loginNext());
+      return;
+    }
     await supabase.from("service_requests").insert({
       shop_id: shopId,
       customer_id: user?.id,

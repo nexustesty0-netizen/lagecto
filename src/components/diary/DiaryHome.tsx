@@ -71,18 +71,19 @@ export function DiaryHome({
 
   return (
     <div className="grid gap-6">
-      <section className="lg-card relative overflow-hidden p-0">
-        <div className="absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={DIARY_ART.today} alt="" className="h-full w-full object-cover opacity-80" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#073628]/80 via-[#0B6E4F]/55 to-transparent" />
-        </div>
-        <div className="relative px-5 py-8 text-white sm:px-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#d4af37]">Smart Diary</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">{greeting} 👋</h1>
-          <p className="mt-2 text-white/85">How are you doing today?</p>
-          <div className="mt-4">
-            <MoodPicker value={todayMood ? String(todayMood.mood) : null} onChange={(mood) => void setMood(mood)} />
+      <section className="lg-card overflow-hidden p-0">
+        <div className="grid lg:grid-cols-2">
+          <div className="bg-[#0B6E4F] px-5 py-8 text-white sm:px-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#d4af37]">Smart Diary</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">{greeting} 👋</h1>
+            <p className="mt-2 text-white/85">How are you doing today?</p>
+            <div className="mt-4">
+              <MoodPicker value={todayMood ? String(todayMood.mood) : null} onChange={(mood) => void setMood(mood)} />
+            </div>
+          </div>
+          <div className="relative min-h-[10rem]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={DIARY_ART.today} alt="" className="absolute inset-0 h-full w-full object-cover" />
           </div>
         </div>
       </section>

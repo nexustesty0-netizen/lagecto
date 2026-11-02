@@ -8,18 +8,21 @@ import { ReceiptDocument } from "@/components/receipts/ReceiptDocument";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function ReceiptView({
   receipt,
   backHref,
   canManage = false,
+  autoPrint = false,
 }: {
   receipt: ReceiptData & { id?: string; customer_id?: string | null };
   backHref: string;
   canManage?: boolean;
+  autoPrint?: boolean;
 }) {
   const router = useRouter();
+  const printed = useRef(false);
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -33,6 +36,13 @@ export function ReceiptView({
     popup.focus();
     popup.print();
   }
+
+  useEffect(() => {
+    if (!autoPrint || printed.current) return;
+    printed.current = true;
+    const timer = window.setTimeout(() => printReceipt(), 350);
+    return () => window.clearTimeout(timer);
+  }, [autoPrint]);
 
   async function saveFile(kind: "image" | "pdf") {
     if (saving) return;

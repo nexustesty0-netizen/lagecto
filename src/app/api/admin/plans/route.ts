@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiProfile } from "@/lib/auth/session";
+import { requireApiAdminLevel } from "@/lib/auth/session";
 import {
   PACKAGE_META,
   isPaidPackage,
@@ -11,7 +11,7 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const auth = await requireApiProfile("admin");
+    const auth = await requireApiAdminLevel("admin");
     if (!auth.ok) return auth.error;
     const body = await request.json();
     const action = String(body.action || "");
@@ -77,6 +77,21 @@ export async function POST(request: Request) {
     if (action === "toggle") {
       const { error } = await supabase.from("subscription_plans").update({ is_active: Boolean(body.isActive) }).eq("id", body.id);
       if (error) return NextResponse.json({ error: "Unable to update this plan." }, { status: 400 });
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action === "delete") {
+      const id = String(body.id || "");
+      if (!id) return NextResponse.json({ error: "Missing plan id." }, { status: 400 });
+      const { error } = await supabase.from("subscription_plans").delete().eq("id", id);
+      if (error) return NextResponse.json({ error: "Unable to delete this plan." }, { status: 400 });
+      await supabase.rpc("log_security_event", {
+        p_event_type: "admin_package_delete",
+        p_actor_id: auth.profile.id,
+        p_identifier: id,
+        p_result: "success",
+        p_metadata: { plan_id: id },
+      });
       return NextResponse.json({ ok: true });
     }
 

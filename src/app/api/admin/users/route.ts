@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiProfile } from "@/lib/auth/session";
+import { createServiceSupabase } from "@/lib/supabase/service";
+import { requireApiAdminLevel, requireApiProfile } from "@/lib/auth/session";
 import { isPlatformOwnerEmail } from "@/lib/brand";
-import { isManager } from "@/lib/admin-access";
+import { isManager, isSuperAdmin, normalizeAdminRole } from "@/lib/admin-access";
 
 async function targetIsPlatformOwner(supabase: Awaited<ReturnType<typeof createServerSupabase>>, userId: string) {
   const { data } = await supabase.from("users").select("email").eq("id", userId).maybeSingle();
@@ -34,13 +35,31 @@ export async function POST(request: Request) {
       if (isManager(auth.profile) && String(body.role || "") !== "shop_owner") {
         return NextResponse.json({ error: "Managers can only assign shop owner roles." }, { status: 403 });
       }
+      const nextRole = String(body.role || "");
+      const requestedAdmin = body.adminRole ? normalizeAdminRole(String(body.adminRole)) : null;
+      if (nextRole === "admin" && requestedAdmin === "super_admin" && !isSuperAdmin(auth.profile)) {
+        return NextResponse.json({ error: "Only a super admin can assign super admins." }, { status: 403 });
+      }
       const { data, error } = await supabase.rpc("admin_set_user_role", {
         p_user_id: userId,
-        p_role: String(body.role || ""),
+        p_role: nextRole,
         p_admin_role: body.adminRole || null,
       });
       if (error) return NextResponse.json({ error: "Unable to update this role." }, { status: 400 });
       if (data?.ok === false) return NextResponse.json({ error: data.error }, { status: 400 });
+      if (nextRole === "customer") {
+        const { data: target } = await supabase.from("users").select("email").eq("id", userId).maybeSingle();
+        await supabase
+          .from("shops")
+          .update({ status: "inactive", is_open: false, updated_at: new Date().toISOString() })
+          .eq("owner_user_id", userId);
+        if (target?.email) {
+          await supabase
+            .from("shops")
+            .update({ status: "inactive", is_open: false, updated_at: new Date().toISOString() })
+            .eq("owner_email", target.email);
+        }
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -74,6 +93,33 @@ export async function POST(request: Request) {
         provider_type: data?.provider_type,
         shop_name: data?.shop_name,
       });
+    }
+
+    if (action === "delete") {
+      const deleter = await requireApiAdminLevel("super_admin");
+      if (!deleter.ok) return deleter.error;
+      if (!userId) return NextResponse.json({ error: "User is required." }, { status: 400 });
+      if (userId === deleter.profile.id) {
+        return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 });
+      }
+      if (await targetIsPlatformOwner(supabase, userId)) {
+        return NextResponse.json({ error: "The platform owner account cannot be deleted." }, { status: 400 });
+      }
+      const { data, error } = await supabase.rpc("admin_delete_user", { p_user_id: userId });
+      if (error) {
+        const missing = /could not find|does not exist|schema cache/i.test(error.message || "");
+        return NextResponse.json(
+          { error: missing ? "Run the latest admin delete SQL in Supabase first." : "Unable to delete this user." },
+          { status: 400 },
+        );
+      }
+      if (data?.ok === false) return NextResponse.json({ error: data.error }, { status: 400 });
+      try {
+        await createServiceSupabase().auth.admin.deleteUser(userId);
+      } catch {
+        // Public row is already gone; auth cleanup is best-effort.
+      }
+      return NextResponse.json({ ok: true });
     }
 
     if (action === "assign_staff") {

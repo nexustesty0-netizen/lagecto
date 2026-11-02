@@ -1,12 +1,12 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader, EmptyState } from "@/components/ui/primitives";
 import { ExpenseBoard } from "@/components/shop/ExpenseBoard";
 import { PLATFORM_EXPENSE_CATEGORIES } from "@/lib/features";
 import { money } from "@/lib/format";
 
 export default async function AdminExpensesPage() {
-  await requireRole("admin");
+  await requireAdminLevel("admin");
   const supabase = await createServerSupabase();
   const [{ data: expenses }, { data: ops }] = await Promise.all([
     supabase.from("platform_expenses").select("*").order("expense_date", { ascending: false }).limit(200),

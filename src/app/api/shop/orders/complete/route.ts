@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonError, publicRpcMessage } from "@/lib/api-error";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { requireApiShop } from "@/lib/auth/session";
 
@@ -11,7 +12,9 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.rpc("complete_shop_order", {
     p_order_id: orderId,
   });
-  if (error) return NextResponse.json({ error: error.message || "Unable to complete this order." }, { status: 400 });
-  if (data?.ok === false) return NextResponse.json({ error: data.error || "Unable to complete this order." }, { status: 400 });
+  if (error) return jsonError("shop.orders.complete", "Unable to complete this order.", 400, error);
+  if (data?.ok === false) {
+    return NextResponse.json({ error: publicRpcMessage(data.error, "Unable to complete this order.") }, { status: 400 });
+  }
   return NextResponse.json(data);
 }

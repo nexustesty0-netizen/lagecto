@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiShop } from "@/lib/auth/session";
+import { requireApiShopOwner } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
-  const auth = await requireApiShop();
+  const auth = await requireApiShopOwner();
   if (!auth.ok) return auth.error;
   const { shop } = auth;
 

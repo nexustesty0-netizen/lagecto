@@ -1,12 +1,12 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireRole } from "@/lib/auth/session";
+import { requireAdminLevel } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/primitives";
 import { SteboAdminClient } from "@/components/admin/SteboAdminClient";
 import { SteboChat } from "@/components/stebo/SteboChat";
 import { WeeklyGenerate } from "@/components/admin/WeeklyGenerate";
 
 export default async function AdminSteboPage() {
-  await requireRole("admin");
+  await requireAdminLevel("admin");
   const supabase = await createServerSupabase();
   const [{ data: knowledge }, { data: examples }, { data: industries }, { data: personality }, { data: weekly }] = await Promise.all([
     supabase.from("stebo_knowledge").select("*").order("created_at", { ascending: false }),

@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
 import { MarketplaceSearch } from "@/components/public/MarketplaceSearch";
+import { PublicHero } from "@/components/public/PublicHero";
 import { ProductGrid, CatalogEmpty } from "@/components/public/ProductCard";
-import { searchCatalog, type CatalogSort } from "@/lib/marketplace/discovery";
+import { ShopCard, SHOP_GRID_CLASS } from "@/components/public/ShopCard";
+import { getLatestShops, getTrendingShops, searchCatalog, toPublicShop, type CatalogSort } from "@/lib/marketplace/discovery";
+import { AdStrip } from "@/components/ads/AdStrip";
+import { SectionHeading } from "@/components/ui/primitives";
 import { titleCase } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Marketplace" };
+export const metadata: Metadata = {
+  title: "Marketplace",
+  description: "Browse live products and services from LaGecto shops in Bulawayo. Checkout is on WhatsApp with each shop.",
+};
 
 export default async function MarketplacePage({
   searchParams,
@@ -20,56 +27,101 @@ export default async function MarketplacePage({
   }>;
 }) {
   const { q, category, type, sort, min, max, sale } = await searchParams;
-  const products = await searchCatalog({
-    q,
-    category,
-    type: type === "service" || type === "product" ? type : "all",
-    sort: (sort as CatalogSort) || "relevance",
-    minPrice: min ? Number(min) : undefined,
-    maxPrice: max ? Number(max) : undefined,
-    onSale: sale === "1",
-    limit: 48,
-  });
+  const [products, latestShops, trendingShops] = await Promise.all([
+    searchCatalog({
+      q,
+      category,
+      type: type === "service" || type === "product" ? type : "all",
+      sort: (sort as CatalogSort) || "relevance",
+      minPrice: min ? Number(min) : undefined,
+      maxPrice: max ? Number(max) : undefined,
+      onSale: sale === "1",
+      limit: 48,
+    }),
+    getLatestShops(4),
+    getTrendingShops(4),
+  ]);
   const heading = category && category !== "all" ? titleCase(category) : "Marketplace";
+  const latestCards = latestShops.slice(0, 4).map(toPublicShop);
+  const trendingCards = trendingShops.map(toPublicShop);
 
   return (
     <>
-      <MarketplaceSearch q={q} category={category} />
-      <section className="mx-auto max-w-6xl px-4 py-10">
-        <form className="mb-6 grid gap-3 rounded-[22px] border border-[var(--lagecto-border)] bg-white/70 p-4 sm:grid-cols-5">
+      <PublicHero
+        slideshow
+        kicker="Shop local"
+        title={heading}
+        subtitle={q ? `Results for “${q}”` : "Browse live products and services from LaGecto shops"}
+      />
+      <MarketplaceSearch q={q} category={category} overlap />
+      <AdStrip className="mx-auto max-w-6xl px-4 pt-4 sm:pt-6" />
+      <section className="mx-auto max-w-6xl px-4 py-5 sm:py-8">
+        <form className="mb-4 grid grid-cols-1 gap-3 rounded-[var(--lg-radius)] border border-[var(--lagecto-border)] bg-white p-3 sm:mb-6 sm:grid-cols-5 sm:p-4">
           {q ? <input type="hidden" name="q" value={q} /> : null}
           {category ? <input type="hidden" name="category" value={category} /> : null}
-          <select name="type" defaultValue={type || "all"} className="min-h-11 rounded-xl border px-3 py-2">
-            <option value="all">Products & services</option>
-            <option value="product">Products</option>
-            <option value="service">Services</option>
-          </select>
-          <select name="sort" defaultValue={sort || "relevance"} className="min-h-11 rounded-xl border px-3 py-2">
-            <option value="relevance">Relevance</option>
-            <option value="newest">Newest</option>
-            <option value="price_asc">Price: low to high</option>
-            <option value="price_desc">Price: high to low</option>
-            <option value="popular">Popular</option>
-          </select>
-          <input name="min" type="number" min={0} defaultValue={min} placeholder="Min price" className="min-h-11 rounded-xl border px-3 py-2" />
-          <input name="max" type="number" min={0} defaultValue={max} placeholder="Max price" className="min-h-11 rounded-xl border px-3 py-2" />
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="sale" value="1" defaultChecked={sale === "1"} />
+          <label className="grid min-w-0 gap-1 text-xs font-medium text-[var(--lagecto-muted)]">
+            Type
+            <select name="type" defaultValue={type || "all"} className="h-11 w-full min-w-0 max-w-full rounded-xl border bg-[var(--lagecto-ivory)] px-3 text-sm text-[var(--lagecto-text)]">
+              <option value="all">All</option>
+              <option value="product">Products</option>
+              <option value="service">Services</option>
+            </select>
+          </label>
+          <label className="grid min-w-0 gap-1 text-xs font-medium text-[var(--lagecto-muted)]">
+            Sort
+            <select name="sort" defaultValue={sort || "relevance"} className="h-11 w-full min-w-0 max-w-full rounded-xl border bg-[var(--lagecto-ivory)] px-3 text-sm text-[var(--lagecto-text)]">
+              <option value="relevance">Relevance</option>
+              <option value="newest">Newest</option>
+              <option value="price_asc">Price: low to high</option>
+              <option value="price_desc">Price: high to low</option>
+              <option value="popular">Popular</option>
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-3 sm:contents">
+            <label className="grid min-w-0 gap-1 text-xs font-medium text-[var(--lagecto-muted)]">
+              Min price
+              <input name="min" type="number" min={0} inputMode="decimal" defaultValue={min} className="h-11 w-full min-w-0 max-w-full rounded-xl border bg-[var(--lagecto-ivory)] px-3 text-sm text-[var(--lagecto-text)]" />
+            </label>
+            <label className="grid min-w-0 gap-1 text-xs font-medium text-[var(--lagecto-muted)]">
+              Max price
+              <input name="max" type="number" min={0} inputMode="decimal" defaultValue={max} className="h-11 w-full min-w-0 max-w-full rounded-xl border bg-[var(--lagecto-ivory)] px-3 text-sm text-[var(--lagecto-text)]" />
+            </label>
+          </div>
+          <label className="flex min-h-11 items-center gap-2 text-sm">
+            <input type="checkbox" name="sale" value="1" defaultChecked={sale === "1"} className="h-4 w-4 accent-[#0B6E4F]" />
             On promotion
           </label>
-          <button className="min-h-11 rounded-xl bg-[#0B6E4F] px-4 py-2 text-sm font-semibold text-white sm:col-span-5">Apply filters</button>
+          <button className="lg-btn w-full sm:col-span-5">Apply filters</button>
         </form>
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold">{heading}</h1>
-            <p className="mt-1 text-sm text-[#6B7280]">{q ? `Results for “${q}”` : "Browse live products and services from LaGecto shops"}</p>
-          </div>
-          <p className="text-sm text-[#6B7280]">{products.length} items</p>
-        </div>
+        <p className="mb-3 text-xs text-[#6B7280] sm:mb-4 sm:text-sm">{products.length} items</p>
         {products.length ? (
           <ProductGrid products={products} />
         ) : (
           <CatalogEmpty title="No matching items" body="Try another search or clear filters. Empty results are shown instead of placeholder products." />
+        )}
+      </section>
+      <section className="mx-auto max-w-6xl px-4 pb-7 sm:pb-10">
+        <SectionHeading title="Latest shops" kicker="New on LaGecto" href="/shops" linkLabel="See all shops" />
+        {latestCards.length ? (
+          <div className={SHOP_GRID_CLASS}>
+            {latestCards.map((shop) => (
+              <ShopCard key={shop.id} shop={shop} />
+            ))}
+          </div>
+        ) : (
+          <CatalogEmpty title="No shops yet" body="New shops appear here after they are published." href="/register-shop" label="Register a shop" />
+        )}
+      </section>
+      <section className="mx-auto max-w-6xl px-4 pb-10 sm:pb-16">
+        <SectionHeading title="Trending shops" href="/shops" linkLabel="See all shops" />
+        {trendingCards.length ? (
+          <div className={SHOP_GRID_CLASS}>
+            {trendingCards.map((shop) => (
+              <ShopCard key={shop.id} shop={shop} />
+            ))}
+          </div>
+        ) : (
+          <CatalogEmpty title="Not enough shop activity yet" body="Trending shops are based on recent paid orders, views and new listings." />
         )}
       </section>
     </>

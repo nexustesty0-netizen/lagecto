@@ -19,12 +19,28 @@ export type ShopSubscriptionState = {
   verified: boolean;
   planName: string | null;
   amount: number | null;
+  inGrace?: boolean;
 };
 
-function isCurrent(endDate?: string | null) {
-  if (!endDate) return false;
+const SUBSCRIPTION_GRACE_DAYS = 5;
+
+function endDateMs(endDate?: string | null) {
+  if (!endDate) return null;
   const end = new Date(`${endDate}T23:59:59`);
-  return !Number.isNaN(end.getTime()) && end.getTime() >= Date.now();
+  return Number.isNaN(end.getTime()) ? null : end.getTime();
+}
+
+function isCurrent(endDate?: string | null) {
+  const end = endDateMs(endDate);
+  if (end == null) return false;
+  return Date.now() <= end + SUBSCRIPTION_GRACE_DAYS * 24 * 60 * 60 * 1000;
+}
+
+function inGrace(endDate?: string | null) {
+  const end = endDateMs(endDate);
+  if (end == null) return false;
+  const now = Date.now();
+  return now > end && now <= end + SUBSCRIPTION_GRACE_DAYS * 24 * 60 * 60 * 1000;
 }
 
 export async function expireDueSubscriptions(shopId?: string | null) {
@@ -36,7 +52,10 @@ export async function expireDueSubscriptions(shopId?: string | null) {
   }
 }
 
-export async function getShopSubscription(shopId: string | null | undefined): Promise<ShopSubscriptionState> {
+export async function getShopSubscription(
+  shopId: string | null | undefined,
+  options?: { expire?: boolean },
+): Promise<ShopSubscriptionState> {
   const empty: ShopSubscriptionState = {
     packageKey: "free",
     durationKey: null,
@@ -47,13 +66,14 @@ export async function getShopSubscription(shopId: string | null | undefined): Pr
     verified: false,
     planName: null,
     amount: null,
+    inGrace: false,
   };
   if (!shopId) return empty;
-  await expireDueSubscriptions(shopId);
+  if (options?.expire !== false) await expireDueSubscriptions(shopId);
   const supabase = await createServerSupabase();
   const { data: sub } = await supabase
     .from("subscriptions")
-    .select("*")
+    .select("package_key, plan, duration_key, duration_months, status, payment_status, start_date, renewal_date, amount")
     .eq("shop_id", shopId)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -73,6 +93,7 @@ export async function getShopSubscription(shopId: string | null | undefined): Pr
     verified: current,
     planName: sub.plan || null,
     amount: sub.amount != null ? Number(sub.amount) : null,
+    inGrace: current && inGrace(sub.renewal_date),
   };
 }
 
@@ -82,8 +103,11 @@ export type ShopFeatureState = {
   packageKey: PackageKey;
 };
 
-export async function getShopFeatureState(shopId: string | null | undefined): Promise<ShopFeatureState> {
-  const sub = await getShopSubscription(shopId);
+export async function getShopFeatureState(
+  shopId: string | null | undefined,
+  preloaded?: ShopSubscriptionState,
+): Promise<ShopFeatureState> {
+  const sub = preloaded ?? (await getShopSubscription(shopId));
   const fallback: ShopFeatureState = {
     features: featuresForPackage(sub.packageKey),
     disabled: [],
@@ -114,11 +138,13 @@ export function featureLockReason(features: Set<string>, disabled: string[] | un
 }
 
 export async function loadOwnedShopWithFeatures() {
-  const { profile, shop } = await getOwnedShop();
-  const [featureState, subscription] = await Promise.all([getShopFeatureState(shop?.id), getShopSubscription(shop?.id)]);
+  const { profile, shop, staffRole } = await getOwnedShop();
+  const subscription = await getShopSubscription(shop?.id);
+  const featureState = await getShopFeatureState(shop?.id, subscription);
   return {
     profile,
     shop,
+    staffRole,
     features: featureState.features,
     disabledFeatures: featureState.disabled,
     subscription,

@@ -2,6 +2,8 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/session";
 import { PageHeader, EmptyState } from "@/components/ui/primitives";
 import { ManageUsersClient } from "@/components/admin/ManageUsersClient";
+import { canViewAccountContact, effectiveAdminRole } from "@/lib/admin-access";
+import { isPlatformOwnerEmail } from "@/lib/brand";
 
 export default async function AdminUsersPage() {
   const profile = await requireRole("admin");
@@ -14,13 +16,27 @@ export default async function AdminUsersPage() {
     supabase.from("shops").select("id, name, login_shop_id, owner_user_id, provider_type").order("name"),
   ]);
 
+  const seeContact = canViewAccountContact(profile);
+  const rows = (users || []).map((user) =>
+    seeContact || isPlatformOwnerEmail(user.email) ? user : { ...user, email: null },
+  );
+
   return (
     <>
-      <PageHeader title="Manage users" subtitle="Super admins can assign managers. Managers can assign shop owners, but cannot see security logs." />
-      {!users?.length ? (
+      <PageHeader
+        title="Admin users and permissions"
+        subtitle="Super admin can do everything, including deleting users. Admin can assign Admin and Manager. Manager can assign shop owners only."
+      />
+      {!rows.length ? (
         <EmptyState title="No users" body="Users appear after registration." />
       ) : (
-        <ManageUsersClient users={users} shops={shops || []} currentUserId={profile.id} currentAdminRole={profile.admin_role} />
+        <ManageUsersClient
+          users={rows}
+          shops={shops || []}
+          currentUserId={profile.id}
+          currentAdminRole={effectiveAdminRole(profile)}
+          currentUserEmail={profile.email}
+        />
       )}
     </>
   );

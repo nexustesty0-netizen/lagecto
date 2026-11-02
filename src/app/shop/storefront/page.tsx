@@ -8,6 +8,7 @@ import { ReviewsManager, type ShopReviewRow } from "@/components/shop/ReviewsMan
 import { GalleryManager } from "@/components/shop/GalleryManager";
 import { VideoManager } from "@/components/shop/VideoManager";
 import { BlogManager } from "@/components/shop/BlogManager";
+import { ProjectManager } from "@/components/shop/ProjectManager";
 import { FaqManager } from "@/components/shop/FaqManager";
 import { ShareStorefrontButton } from "@/components/storefront/ShareStorefrontButton";
 import Link from "next/link";
@@ -21,13 +22,14 @@ export default async function StorefrontPage({
   const { shop, features } = await loadOwnedShopWithFeatures();
   if (!shop) return null;
   const supabase = await createServerSupabase();
-  const [{ data: config }, { data: media }, { data: videos }, { data: posts }, { data: faqs }, reviewResult] = await Promise.all([
+  const [{ data: config }, { data: media }, { data: videos }, { data: posts }, { data: faqs }, reviewResult, projectsResult] = await Promise.all([
     supabase.from("shop_storefront_config").select("*").eq("shop_id", shop.id).maybeSingle(),
     supabase.from("storefront_media").select("*").eq("shop_id", shop.id).order("sort_order"),
     supabase.from("storefront_videos").select("*").eq("shop_id", shop.id).order("sort_order"),
     supabase.from("storefront_blog_posts").select("*").eq("shop_id", shop.id).order("updated_at", { ascending: false }),
     supabase.from("shop_faq_entries").select("*").eq("shop_id", shop.id).order("sort_order"),
     supabase.from("ratings").select("id, rating, review, reply, reviewer_name, is_hidden, created_at").eq("shop_id", shop.id).order("created_at", { ascending: false }).limit(80),
+    supabase.from("storefront_projects").select("*").eq("shop_id", shop.id).order("sort_order"),
   ]);
   const reviews =
     reviewResult.data ||
@@ -48,7 +50,8 @@ export default async function StorefrontPage({
     { id: "reviews", label: "Reviews" },
     { id: "media", label: "Media" },
     { id: "videos", label: "Videos" },
-    { id: "blog", label: "Blog" },
+    ...(shop.provider_type !== "products" ? [{ id: "projects", label: "Projects" }] : []),
+    { id: "blog", label: "Blog / Vlog" },
     { id: "faq", label: "FAQ" },
   ];
 
@@ -102,6 +105,9 @@ export default async function StorefrontPage({
         ) : (
           <FeatureLocked feature="advanced_storefront" />
         )
+      ) : null}
+      {current === "projects" && shop.provider_type !== "products" ? (
+        <ProjectManager shopId={shop.id} projects={projectsResult.error ? [] : projectsResult.data || []} />
       ) : null}
       {current === "blog" ? (
         features.has("blogs") ? (

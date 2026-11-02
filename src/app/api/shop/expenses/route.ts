@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonError, publicRpcMessage } from "@/lib/api-error";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { requireApiShopFeature } from "@/lib/auth/session";
 
@@ -25,8 +26,8 @@ export async function POST(request: Request) {
 
   if (action === "clear") {
     const { data, error } = await supabase.rpc("clear_shop_expenses");
-    if (error) return NextResponse.json({ error: error.message || "Unable to clear expenses." }, { status: 400 });
-    if (data?.ok === false) return NextResponse.json({ error: data.error }, { status: 400 });
+    if (error) return jsonError("shop.expenses.clear", "Unable to clear expenses.", 400, error);
+    if (data?.ok === false) return NextResponse.json({ error: publicRpcMessage(data.error, "Unable to clear expenses.") }, { status: 400 });
     return NextResponse.json(data);
   }
 

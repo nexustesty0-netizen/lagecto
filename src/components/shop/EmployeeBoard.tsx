@@ -57,7 +57,7 @@ export function EmployeeBoard({ employees }: { employees: EmployeeCardRow[] }) {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {rows.map((employee) => (
-            <Link key={employee.id} href={`/shop/employees/${employee.id}`} className="os-surface block transition hover:-translate-y-0.5">
+            <Link key={employee.id} href={`/shop/employees/${employee.id}`} className="os-surface block">
               <div className="flex items-start gap-3">
                 <InitialsAvatar name={employee.name} photoUrl={employee.photo_url} />
                 <div className="min-w-0">

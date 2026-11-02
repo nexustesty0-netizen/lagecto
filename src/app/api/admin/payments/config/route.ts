@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { requireApiProfile } from "@/lib/auth/session";
+import { requireApiAdminLevel, requireApiProfile } from "@/lib/auth/session";
 import { getPaymentPublicConfig } from "@/lib/payments/config";
 
 export async function GET() {
@@ -16,7 +16,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireApiProfile("admin");
+  const auth = await requireApiAdminLevel("super_admin");
   if (!auth.ok) return auth.error;
   const body = await request.json().catch(() => ({}));
   const supabase = await createServerSupabase();

@@ -146,7 +146,7 @@ export function QuickAction({
   return (
     <Link
       href={href}
-      className="lg-card flex min-h-[108px] flex-col items-center justify-center gap-2 p-3 text-center transition hover:-translate-y-0.5"
+      className="lg-card flex min-h-[108px] flex-col items-center justify-center gap-2 p-3 text-center"
     >
       <span className="block w-14">
         <DiaryArt src={art} size={80} />

@@ -20,8 +20,15 @@ export function StorefrontReviews({
 }) {
   if (!reviews.length) return null;
   return (
-    <section className={embedded ? "grid gap-3" : "mx-auto max-w-6xl px-4 pb-12"}>
-      <h2 className={embedded ? "text-xl font-semibold" : "mb-5 text-2xl font-semibold"}>{heading}</h2>
+    <section className={embedded ? "grid gap-3" : "sf-reveal mx-auto max-w-6xl px-4 pb-16"}>
+      {embedded ? (
+        <h2 className="text-xl font-semibold">{heading}</h2>
+      ) : (
+        <div className="mb-6">
+          <p className="sf-kicker">Guests</p>
+          <h2 className="mt-2 text-3xl font-semibold">{heading}</h2>
+        </div>
+      )}
       <div className="grid gap-3 md:grid-cols-2">
         {reviews.map((review) => (
           <article key={review.id} className="sf-card p-4">

@@ -88,8 +88,8 @@ export function resolveStorefrontTheme(colors?: StorefrontColors | null): Resolv
   const onAccent = bestTextOn(accent);
   const buttonBg = contrastRatio(onPrimary, primary) >= 4.5 ? primary : ensureContrast(primary, background, 3);
   const buttonText = bestTextOn(buttonBg);
-  const navBg = contrastRatio("#FFFFFF", background) >= 1.2 ? mixToward(background, "#FFFFFF", 0.72) : mixToward(background, "#000000", 0.08);
-  const navText = ensureContrast(text, navBg, 4.5);
+  const navBg = "#FFFFFF";
+  const navText = ensureContrast("#12241C", navBg, 4.5);
   const card = mixToward(background, "#FFFFFF", 0.55);
 
   return {

@@ -16,11 +16,18 @@ import {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const fullName = String(body.fullName || body.full_name || "").trim();
+    const firstName = String(body.firstName || "").trim();
+    const lastName = String(body.lastName || "").trim();
+    const fullName = [firstName, lastName].filter(Boolean).join(" ") || String(body.fullName || body.full_name || "").trim();
     const email = String(body.email || "")
       .trim()
       .toLowerCase();
-    const username = String(body.username || "").trim();
+    let username = String(body.username || "").trim();
+    if (!username) {
+      const seed = (firstName || email.split("@")[0] || "user").toLowerCase().replace(/[^a-z0-9]/g, "");
+      username = (seed.length >= 3 ? seed.slice(0, 18) : `user${seed || "ok"}`).slice(0, 18);
+      if (username.length < 3) username = `user${Math.floor(Math.random() * 900 + 100)}`;
+    }
     const password = String(body.password || "");
     const phone = String(body.phone || "").trim();
     const ip = clientIp(request.headers);
@@ -56,14 +63,18 @@ export async function POST(request: Request) {
     if (takenEmail) {
       return NextResponse.json({ error: GENERIC_REGISTER_ERROR }, { status: 400 });
     }
-    const normalizedUsername = username.toLowerCase();
+    let normalizedUsername = username.toLowerCase();
     const { data: takenUsername } = await admin
       .from("users")
       .select("id")
       .eq("username_normalized", normalizedUsername)
       .maybeSingle();
     if (takenUsername) {
-      return NextResponse.json({ error: "This username is already taken." }, { status: 400 });
+      if (body.username) {
+        return NextResponse.json({ error: "This username is already taken." }, { status: 400 });
+      }
+      username = `${username.slice(0, 16)}${Math.floor(Math.random() * 90 + 10)}`;
+      normalizedUsername = username.toLowerCase();
     }
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;

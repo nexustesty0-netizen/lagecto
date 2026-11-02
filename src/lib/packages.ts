@@ -28,9 +28,9 @@ export const DURATION_LABELS: Record<DurationKey, string> = {
 };
 
 export const PACKAGE_PRICES: Record<PaidPackageKey, Record<DurationKey, number>> = {
-  thabi: { "1_month": 2, "3_months": 5, "6_months": 9, "9_months": 13, "1_year": 16 },
-  kristen: { "1_month": 3.5, "3_months": 9, "6_months": 16, "9_months": 22, "1_year": 28 },
-  sandra: { "1_month": 5, "3_months": 13, "6_months": 23, "9_months": 32, "1_year": 40 },
+  thabi: { "1_month": 4.5, "3_months": 11, "6_months": 21, "9_months": 30, "1_year": 38 },
+  kristen: { "1_month": 6.5, "3_months": 16, "6_months": 30, "9_months": 44, "1_year": 55 },
+  sandra: { "1_month": 8, "3_months": 20, "6_months": 37.5, "9_months": 54, "1_year": 67 },
 };
 
 const CORE_FEATURES = [
@@ -87,11 +87,11 @@ export const PACKAGE_FEATURES: Record<PackageKey, readonly string[]> = {
   sandra: SANDRA_FEATURES,
 };
 
-export const PACKAGE_LIMITS: Record<PackageKey, { gallery: number; videos: number; blogs: number }> = {
-  free: { gallery: 48, videos: 24, blogs: 99 },
-  thabi: { gallery: 12, videos: 0, blogs: 0 },
-  kristen: { gallery: 24, videos: 8, blogs: 24 },
-  sandra: { gallery: 48, videos: 24, blogs: 99 },
+export const PACKAGE_LIMITS: Record<PackageKey, { gallery: number; videos: number; blogs: number; catalogDeviceImages: number | null }> = {
+  free: { gallery: 48, videos: 24, blogs: 99, catalogDeviceImages: 4 },
+  thabi: { gallery: 12, videos: 0, blogs: 0, catalogDeviceImages: 8 },
+  kristen: { gallery: 24, videos: 8, blogs: 24, catalogDeviceImages: 10 },
+  sandra: { gallery: 48, videos: 24, blogs: 99, catalogDeviceImages: null },
 };
 
 export const FREE_PLAN_HIGHLIGHTS = [
@@ -102,6 +102,19 @@ export const FREE_PLAN_HIGHLIGHTS = [
   "Expenses, payroll, and profit & loss",
   "Staff, diary, and analytics",
 ] as const;
+
+export const PACKAGE_CARD_POINTS: Record<PaidPackageKey, string[]> = {
+  thabi: ["Verified shop badge", "Public storefront", "Orders and WhatsApp checkout", "POS and receipts"],
+  kristen: ["Everything in Thabi", "Custom branding", "Blogs and staff tools", "Smart Diary Pro"],
+  sandra: ["Everything in Kristen", "Analytics", "Advanced POS and inventory", "Priority support"],
+};
+
+export const PACKAGE_THEME: Record<PackageKey, { accent: string; wash: string; ink: string }> = {
+  free: { accent: "#0B6E4F", wash: "#E8F4EE", ink: "#0B6E4F" },
+  thabi: { accent: "#0B6E4F", wash: "#E7F3EC", ink: "#0B6E4F" },
+  kristen: { accent: "#D4AF37", wash: "#F8F1D8", ink: "#6B5208" },
+  sandra: { accent: "#0B6E4F", wash: "#DCE8E2", ink: "#0B6E4F" },
+};
 
 export const PACKAGE_META = {
   free: {
@@ -190,6 +203,18 @@ export function normalizePackageKey(value?: string | null): PackageKey {
   return "free";
 }
 
+export function catalogDeviceImageLimit(key?: string | null) {
+  return PACKAGE_LIMITS[normalizePackageKey(key)].catalogDeviceImages;
+}
+
+export function catalogDeviceImageMessage(key?: string | null) {
+  const pack = normalizePackageKey(key);
+  const limit = PACKAGE_LIMITS[pack].catalogDeviceImages;
+  const name = PACKAGE_META[pack].name;
+  if (limit == null) return `${name} can store unlimited service and product photos from this device.`;
+  return `${name} can store ${limit} service or product photos from this device. Extra items can use an image URL.`;
+}
+
 export function featuresForPackage(key?: string | null) {
   return new Set(PACKAGE_FEATURES[normalizePackageKey(key)]);
 }
@@ -221,6 +246,36 @@ export function normalizeDurationKey(value?: string | null, months?: number | nu
 
 export function priceFor(packageKey: PaidPackageKey, duration: DurationKey) {
   return PACKAGE_PRICES[packageKey][duration];
+}
+
+export function emptyCatalogPrices(): Record<PaidPackageKey, Record<DurationKey, number>> {
+  return {
+    thabi: { ...PACKAGE_PRICES.thabi },
+    kristen: { ...PACKAGE_PRICES.kristen },
+    sandra: { ...PACKAGE_PRICES.sandra },
+  };
+}
+
+export function catalogPricesFromPlans(
+  plans: {
+    package_key?: string | null;
+    duration_key?: string | null;
+    duration_months?: number | null;
+    price?: number | null;
+    promo_price?: number | null;
+    is_active?: boolean | null;
+  }[],
+): Record<PaidPackageKey, Record<DurationKey, number>> {
+  const prices = emptyCatalogPrices();
+  for (const plan of plans) {
+    if (plan.is_active === false) continue;
+    if (!isPaidPackage(plan.package_key)) continue;
+    const duration = normalizeDurationKey(plan.duration_key, plan.duration_months);
+    const promo = plan.promo_price == null ? NaN : Number(plan.promo_price);
+    const amount = Number.isFinite(promo) ? promo : Number(plan.price);
+    if (Number.isFinite(amount) && amount >= 0) prices[plan.package_key][duration] = amount;
+  }
+  return prices;
 }
 
 export function planSlug(packageKey: PaidPackageKey, duration: DurationKey) {

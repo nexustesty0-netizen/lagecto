@@ -26,7 +26,7 @@ export function VideoManager({ shopId, videos }: { shopId: string; videos: Video
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!url) {
-      setError("Add a video file or a YouTube, Instagram, TikTok, Facebook, or Vimeo URL.");
+      setError("Paste a Facebook, Instagram, YouTube, or TikTok URL.");
       return;
     }
     const parsed = validateVideoUrl(url);
@@ -69,10 +69,9 @@ export function VideoManager({ shopId, videos }: { shopId: string; videos: Video
         <MediaField
           label="Video"
           purpose="video"
-          accept="video/mp4,video/webm"
           value={url}
           onChange={setUrl}
-          hint="Upload MP4/WEBM, or paste a YouTube, Instagram, TikTok, Facebook, or Vimeo URL. Customers watch it here — it will not open those apps."
+          hint="Paste a Facebook, Instagram, YouTube, or TikTok URL. Videos cannot be uploaded from this device."
         />
         <button className="rounded-xl bg-[#0B6E4F] px-4 py-2 text-white">Add video</button>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}

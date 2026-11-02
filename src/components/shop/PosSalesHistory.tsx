@@ -21,7 +21,15 @@ export type HistorySale = {
   receipt_id?: string | null;
 };
 
-export function PosSalesHistory({ sales, showAllLink = true }: { sales: HistorySale[]; showAllLink?: boolean }) {
+export function PosSalesHistory({
+  sales,
+  showAllLink = true,
+  canManage = false,
+}: {
+  sales: HistorySale[];
+  showAllLink?: boolean;
+  canManage?: boolean;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState<HistorySale | null>(null);
   const [clearOpen, setClearOpen] = useState(false);
@@ -77,7 +85,7 @@ export function PosSalesHistory({ sales, showAllLink = true }: { sales: HistoryS
               Open full sales list
             </Link>
           ) : null}
-          {sales.length ? (
+          {canManage && sales.length ? (
             <button
               type="button"
               className="min-h-11 rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700"
@@ -92,7 +100,45 @@ export function PosSalesHistory({ sales, showAllLink = true }: { sales: HistoryS
       {!sales.length ? (
         <p className="rounded-2xl bg-white p-4 text-sm text-[#6B7280]">No sales recorded yet.</p>
       ) : (
-        <div className="app-table-wrap">
+        <>
+        <div className="grid gap-2 md:hidden">
+          {sales.map((sale) => (
+            <article key={sale.id} className="rounded-2xl border border-[var(--lagecto-border)] bg-white p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{sale.sale_number || "Sale"}</p>
+                  <p className="text-xs text-[var(--lagecto-muted)]">{sale.customer_name || "Walk-in"}</p>
+                </div>
+                <p className="text-sm font-semibold">{money(sale.total)}</p>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <StatusBadge value={sale.status} />
+                <span className="text-xs text-[var(--lagecto-muted)]">{formatDateTime(sale.sale_date)}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                <Link href={`/shop/sales/${sale.id}`} className="font-semibold text-[#0B6E4F]">
+                  View
+                </Link>
+                {sale.receipt_id ? (
+                  <Link href={`/shop/receipts/${sale.receipt_id}`} className="font-semibold text-[#0B6E4F]">
+                    Receipt
+                  </Link>
+                ) : null}
+                {canManage ? (
+                  <>
+                    <Link href={`/shop/sales/${sale.id}/edit`} className="font-semibold text-[#0B6E4F]">
+                      Correct
+                    </Link>
+                    <button type="button" className="text-red-700" onClick={() => setPending(sale)}>
+                      Void
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="app-table-wrap hidden md:block">
           <table className="app-table">
             <thead>
               <tr>
@@ -120,17 +166,24 @@ export function PosSalesHistory({ sales, showAllLink = true }: { sales: HistoryS
                   <td>{formatDateTime(sale.sale_date)}</td>
                   <td className="text-right">
                     <div className="flex flex-wrap justify-end gap-2">
+                      <Link href={`/shop/sales/${sale.id}`} className="text-sm text-[#0B6E4F]">
+                        View
+                      </Link>
                       {sale.receipt_id ? (
                         <Link href={`/shop/receipts/${sale.receipt_id}`} className="text-sm text-[#0B6E4F]">
                           Receipt
                         </Link>
                       ) : null}
-                      <Link href={`/shop/sales/${sale.id}/edit`} className="text-sm text-[#0B6E4F]">
-                        Edit
-                      </Link>
-                      <button type="button" className="text-sm text-red-700" onClick={() => setPending(sale)}>
-                        Delete
-                      </button>
+                      {canManage ? (
+                        <>
+                          <Link href={`/shop/sales/${sale.id}/edit`} className="text-sm text-[#0B6E4F]">
+                            Correct
+                          </Link>
+                          <button type="button" className="text-sm text-red-700" onClick={() => setPending(sale)}>
+                            Void
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -138,12 +191,13 @@ export function PosSalesHistory({ sales, showAllLink = true }: { sales: HistoryS
             </tbody>
           </table>
         </div>
+        </>
       )}
       <ConfirmDialog
         open={Boolean(pending)}
-        title="Delete this sale?"
+        title="Void this sale?"
         body="Use this only for a mistake. The linked receipt is removed and catalogue stock is returned. Archived periods cannot be changed."
-        confirmLabel="Delete sale"
+        confirmLabel="Void sale"
         onCancel={() => setPending(null)}
         onConfirm={() => void remove()}
       />

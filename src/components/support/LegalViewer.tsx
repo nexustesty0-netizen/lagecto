@@ -3,6 +3,26 @@
 import { useMemo, useState } from "react";
 import { formatDate } from "@/lib/format";
 
+function stripDraftNotice(content: string) {
+  return content
+    .split("\n")
+    .filter((line) => {
+      const text = line.toLowerCase();
+      return (
+        !text.includes("operating statement") &&
+        !text.includes("certified legal opinion") &&
+        !text.includes("binding policy") &&
+        !text.includes("working draft") &&
+        !text.includes("not legal advice") &&
+        !text.includes("before relying on it as a binding") &&
+        !text.includes("have counsel review")
+      );
+    })
+    .join("\n")
+    .replace(/^\n+/, "")
+    .trim();
+}
+
 export function LegalViewer({
   title,
   version,
@@ -23,58 +43,79 @@ export function LegalViewer({
   basePath: string;
 }) {
   const [q, setQ] = useState("");
+  const body = useMemo(() => stripDraftNotice(content), [content]);
   const headings = useMemo(
     () =>
-      content
+      body
         .split("\n")
         .filter((line) => /^\d+\.\s/.test(line.trim()))
         .map((line) => line.trim()),
-    [content],
+    [body],
   );
   const filtered = q.trim()
-    ? content
+    ? body
         .split("\n")
         .filter((line) => line.toLowerCase().includes(q.trim().toLowerCase()))
         .join("\n")
-    : content;
+    : body;
+  const blocks = filtered.split(/\n{2,}/).filter(Boolean);
 
   return (
-    <article className="lg-legal">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#D4AF37]">Legal</p>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-2 text-sm text-[var(--lagecto-muted)]">
-        Version {version}
-        {effectiveOn ? ` · Effective ${effectiveOn}` : ""}
-        {publishedAt ? ` · Published ${formatDate(publishedAt)}` : ""}
-      </p>
-      <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-        Working draft for LaGecto / Gecto Tech review. This is not legal advice and should be approved before you rely on it as a binding policy.
-      </p>
-      <div className="mt-4 flex flex-wrap gap-3 text-sm">
-        <button type="button" className="rounded-full border px-3 py-1" onClick={() => window.print()}>
-          Print
-        </button>
-        <a className="rounded-full border px-3 py-1" href={`data:text/plain,${encodeURIComponent(content)}`} download={`${slug}-v${version}.txt`}>
-          Download
-        </a>
+    <article className="lg-legal overflow-hidden rounded-[var(--lg-radius)] border border-[var(--lagecto-border)] bg-white">
+      <div className="border-b border-[var(--lagecto-border)] px-5 py-6 sm:px-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#D4AF37]">Legal</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1>
+        <p className="mt-2 text-sm text-[var(--lagecto-muted)]">
+          Version {version}
+          {effectiveOn ? ` · Effective ${effectiveOn}` : ""}
+          {publishedAt ? ` · Published ${formatDate(publishedAt)}` : ""}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3 text-sm">
+          <button type="button" className="rounded-full border px-3 py-1" onClick={() => window.print()}>
+            Print
+          </button>
+          <a className="rounded-full border px-3 py-1" href={`data:text/plain,${encodeURIComponent(body)}`} download={`${slug}-v${version}.txt`}>
+            Download
+          </a>
+        </div>
+        <label className="mt-6 block text-sm">
+          Search this document
+          <input value={q} onChange={(event) => setQ(event.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        </label>
       </div>
-      <label className="mt-6 block text-sm">
-        Search this document
-        <input value={q} onChange={(e) => setQ(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
-      </label>
       {headings.length ? (
-        <nav className="mt-6 lg-card p-4" aria-label="Table of contents">
+        <nav className="border-b border-[var(--lagecto-border)] bg-[#FFFDF8] px-5 py-5 sm:px-8" aria-label="Table of contents">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--lagecto-muted)]">Contents</p>
-          <ol className="mt-2 grid gap-1 text-sm">
+          <ol className="mt-3 grid gap-1 text-sm">
             {headings.map((heading) => (
               <li key={heading}>{heading}</li>
             ))}
           </ol>
         </nav>
       ) : null}
-      <div className="mt-8 whitespace-pre-wrap text-base leading-7">{filtered}</div>
+      <div className="grid gap-5 px-5 py-8 text-base leading-7 sm:px-8">
+        {blocks.map((block) => {
+          const lines = block.split("\n");
+          const heading = /^\d+\.\s/.test(lines[0] || "");
+          if (heading) {
+            return (
+              <section key={block.slice(0, 48)}>
+                <h2 className="text-lg font-semibold">{lines[0]}</h2>
+                {lines.slice(1).join("\n").trim() ? (
+                  <p className="mt-2 whitespace-pre-wrap text-[var(--lagecto-text)]">{lines.slice(1).join("\n")}</p>
+                ) : null}
+              </section>
+            );
+          }
+          return (
+            <p key={block.slice(0, 48)} className="whitespace-pre-wrap">
+              {block}
+            </p>
+          );
+        })}
+      </div>
       {history.length > 1 ? (
-        <section className="mt-10">
+        <section className="border-t border-[var(--lagecto-border)] px-5 py-6 sm:px-8">
           <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#D4AF37]">Previous versions</h2>
           <ul className="mt-2 text-sm">
             {history.map((row) => (

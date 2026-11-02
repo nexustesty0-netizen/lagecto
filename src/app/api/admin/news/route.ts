@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { requireApiProfile } from "@/lib/auth/session";
-import { parsePublicHttpsUrl } from "@/lib/media";
+import { validateVideoUrl } from "@/lib/media";
 
 export async function POST(request: Request) {
   const auth = await requireApiProfile("admin");
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     : "draft";
   const videoUrl = String(body.videoUrl || "").trim();
   if (videoUrl) {
-    const parsed = parsePublicHttpsUrl(videoUrl);
+    const parsed = validateVideoUrl(videoUrl);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
   const scheduledAt = status === "scheduled" && body.scheduledAt ? new Date(body.scheduledAt).toISOString() : null;

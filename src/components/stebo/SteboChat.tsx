@@ -18,7 +18,6 @@ export function SteboChat({
   const [conversationId, setConversationId] = useState(initialConversationId || "");
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
-  const [setup, setSetup] = useState(false);
   const [pending, setPending] = useState(false);
   const [local, setLocal] = useState(messages || []);
 
@@ -39,7 +38,6 @@ export function SteboChat({
     const data = await response.json();
     setPending(false);
     if (!response.ok) {
-      setSetup(Boolean(data.setup));
       setError(data.error || "Stebo could not reply.");
       return;
     }
@@ -52,11 +50,6 @@ export function SteboChat({
   return (
     <section className="grid gap-4 rounded-2xl bg-white p-4">
       <h2 className="font-semibold">{title}</h2>
-      {setup ? (
-        <p className="rounded-xl bg-[#F7F3E3] p-3 text-sm">
-          Stebo is not ready yet. An admin needs to add knowledge in the Intelligence Center, or set STEBO_API_URL.
-        </p>
-      ) : null}
       <div className="grid max-h-[420px] gap-3 overflow-y-auto">
         {local.map((message, index) => (
           <article key={index} className={`rounded-xl p-3 text-sm ${message.role === "user" ? "bg-[#F7F3E3]" : "bg-[#0B6E4F]/10"}`}>

@@ -35,8 +35,8 @@ export function PublicHeader() {
 
   return (
     <header
-      className={`sticky top-0 z-40 border-b bg-[color-mix(in_srgb,var(--lagecto-ivory)_86%,transparent)] text-[var(--lagecto-text)] backdrop-blur-xl transition-all duration-200 ${
-        scrolled ? "border-[var(--lagecto-border)] shadow-[0_10px_30px_rgba(18,36,28,0.08)]" : "border-transparent"
+      className={`sticky top-0 z-40 border-b bg-[var(--lagecto-ivory)] text-[var(--lagecto-text)] ${
+        scrolled ? "border-[var(--lagecto-border)]" : "border-transparent"
       }`}
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
@@ -49,8 +49,8 @@ export function PublicHeader() {
           <Logo size={scrolled ? 40 : 44} />
           <span className="min-w-0 leading-tight">
             <span className="block truncate text-base font-semibold tracking-tight sm:text-lg">{BRAND.name}</span>
-            <span className="hidden text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--lagecto-muted)] sm:block">
-              Digital commerce
+            <span className="hidden text-[11px] text-[var(--lagecto-muted)] sm:block">
+              {BRAND.location}
             </span>
           </span>
         </Link>
@@ -80,13 +80,10 @@ export function PublicHeader() {
               </span>
             ) : null}
           </Link>
-          <Link
-            href="/login"
-            className="rounded-full border border-[var(--lagecto-border)] bg-white px-4 py-2 text-sm font-medium text-[var(--lagecto-text)]"
-          >
+          <Link href="/login" className="lg-btn-secondary">
             Sign in
           </Link>
-          <Link href="/register-shop" className="rounded-full bg-[#0B6E4F] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(11,110,79,0.22)]">
+          <Link href="/register-shop" className="lg-btn">
             Register a shop
           </Link>
         </div>
@@ -129,7 +126,7 @@ export function PublicHeader() {
           <Link href="/login" className="min-h-11 rounded-xl px-3 py-2.5 text-sm hover:bg-black/5">
             Sign in
           </Link>
-          <Link href="/register-shop" className="min-h-11 rounded-xl bg-[#0B6E4F] px-3 py-2.5 text-sm font-semibold text-white">
+          <Link href="/register-shop" className="lg-btn">
             Register a shop
           </Link>
         </nav>

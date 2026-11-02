@@ -128,6 +128,7 @@ export async function POST(request: Request) {
     });
 
     const supabase = await createServerSupabase();
+    await supabase.auth.signOut({ scope: "local" });
     const { error } = await supabase.auth.setSession({
       access_token: tokenJson.access_token,
       refresh_token: tokenJson.refresh_token,
@@ -136,12 +137,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: GENERIC_AUTH_ERROR }, { status: 401 });
     }
 
-    const home =
+    let home =
       identity.account_role === "admin"
         ? "/admin"
         : identity.account_role === "shop_owner"
           ? "/shop"
           : "/customer";
+    if (home === "/customer") {
+      const staff = await admin
+        .from("shop_staff_assignments")
+        .select("role_name")
+        .eq("user_id", identity.user_id)
+        .limit(1)
+        .maybeSingle();
+      if (staff.data?.role_name) home = staff.data.role_name === "cashier" ? "/shop/pos" : "/shop";
+    }
 
     return NextResponse.json({
       ok: true,

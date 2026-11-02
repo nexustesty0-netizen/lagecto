@@ -32,7 +32,7 @@ Login, signup, password reset, logout, role-based route protection, username cha
 Current period, archived periods (view/search/export PDF & Excel), POS and order receipts, Help & Support using official contact details
 
 ### PUBLIC
-Marketplace, shops, news, subscription plans (Thabi/Kristen), marketing pages, support
+Marketplace, shops, news, subscription plans (Thabi / Kristen / Sandra + Free), marketing pages, support
 
 ## 3. Web architecture
 
@@ -62,9 +62,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SITE_URL=
 STEBO_API_URL=
+CRON_SECRET=
 ```
 
-Never put the service role key in client code or source control. `STEBO_API_URL` is optional; without it Stebo answers from knowledge and training examples.
+Never put the service role key in client code or source control. `STEBO_API_URL` is optional; without it Stebo answers from knowledge and training examples. `CRON_SECRET` is required in production for `/api/cron/loyalty` and `/api/cron/stebo-weekly`. Full notes: `docs/environments.md`.
 
 ## 6. Connect the NEW Supabase project
 
@@ -88,13 +89,20 @@ Open http://localhost:3000
 ## 8. Production build
 
 ```bash
+npm test
 npm run build
 npm start
 ```
 
+Smoke against a running server (does not write customer or shop data):
+
+```bash
+npm run smoke
+```
+
 ## 9. Deploy
 
-Deploy to Vercel (or any Next.js host). Set the same environment variables. Set `NEXT_PUBLIC_SITE_URL` to the public domain. Apply the SQL migrations to the new Supabase project before first login.
+See `docs/deployment.md`, `docs/release-checklist.md`, and `docs/disaster-recovery.md`. Deploy to Vercel (or any Next.js host). Use a **separate** Supabase project per environment. Set `NEXT_PUBLIC_SITE_URL` to the public https origin. Apply SQL migrations in filename order before first login.
 
 ## 10. Support
 
@@ -104,10 +112,12 @@ Email: lagecto@outlook.com
 
 ## 11. Features that still need configuration
 
-- New Supabase project URL/keys
-- Running the SQL migrations (including `20260908040000_lagecto_web_parity.sql`)
+- New Supabase project URL/keys (never reuse the mobile-app project)
+- Running SQL migrations in filename order, including `20261031100000`–`20261031140000`
 - Creating the first admin in the database
+- `CRON_SECRET` on the host
+- Confirming backups / PITR in the Supabase dashboard
 - Auth email templates / custom SMTP (optional)
-- Storage buckets if you later add image uploads
 - Optional `STEBO_API_URL` if you want the Python Stebo backend instead of retrieval-only replies
+- Lawyer review of terms and privacy (fallback copy is live until you publish)
 - Seed extra Stebo knowledge in the Intelligence Center

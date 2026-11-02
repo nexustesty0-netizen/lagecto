@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { PageHeader, EmptyState } from "@/components/ui/primitives";
 import { ShopCard, SHOP_GRID_CLASS } from "@/components/public/ShopCard";
 import { shopIsOpenNow } from "@/lib/hours";
+import { AdStrip } from "@/components/ads/AdStrip";
 
 export default async function CustomerShopsPage({
   searchParams,
@@ -20,7 +22,16 @@ export default async function CustomerShopsPage({
 
   return (
     <>
-      <PageHeader title="Explore shops" subtitle="Search active LaGecto shops" />
+      <PageHeader
+        title="Marketplace"
+        subtitle="Active LaGecto shops. Open a shop to browse products, save it, or send an enquiry."
+        action={
+          <Link href="/marketplace" className="text-sm font-medium text-[#0B6E4F]">
+            Product catalogue
+          </Link>
+        }
+      />
+      <AdStrip className="mb-6" />
       <form className="mb-6">
         <input
           name="q"
@@ -30,7 +41,17 @@ export default async function CustomerShopsPage({
         />
       </form>
       {!shops?.length ? (
-        <EmptyState title="No shops found" body="Try another search, or check back after shops are published." />
+        <EmptyState
+          title="No shops found"
+          body="Try another search, or check back after shops are published."
+          action={
+            q ? (
+              <Link href="/customer/shops" className="inline-flex rounded-full bg-[#0B6E4F] px-4 py-2 text-sm font-semibold text-white">
+                Clear search
+              </Link>
+            ) : null
+          }
+        />
       ) : (
         <div className={SHOP_GRID_CLASS}>
           {shops.map((shop) => (

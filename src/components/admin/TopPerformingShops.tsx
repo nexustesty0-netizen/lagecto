@@ -1,18 +1,18 @@
 import { VerifiedBadge } from "@/components/shop/VerifiedBadge";
 import type { PerformingShop } from "@/lib/analytics";
 import { TOP_SHOPS_FORMULA } from "@/lib/analytics";
-
-const MEDALS = ["🥇", "🥈", "🥉"];
+import { barPercent } from "@/lib/chart-math";
 
 export function TopPerformingShops({ shops }: { shops: PerformingShop[] }) {
+  const maxScore = Math.max(0, ...shops.map((shop) => Number(shop.score) || 0));
   return (
-    <section className="lg-card overflow-hidden p-5">
+    <section className="lg-card overflow-hidden p-4 sm:p-5">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#D4AF37]">Marketplace pulse</p>
-          <h2 className="mt-1 text-xl font-semibold">Top 3 performing shops</h2>
+          <p className="os-kicker">Marketplace pulse</p>
+          <h2 className="mt-1 text-lg font-semibold sm:text-xl">Top 3 performing shops</h2>
         </div>
-        <p className="max-w-sm text-right text-[11px] leading-4 text-[var(--lagecto-muted)]">{TOP_SHOPS_FORMULA}</p>
+        <p className="hidden max-w-sm text-right text-[11px] leading-4 text-[var(--lagecto-muted)] sm:block">{TOP_SHOPS_FORMULA}</p>
       </div>
       {!shops.length ? (
         <p className="mt-6 text-sm text-[var(--lagecto-muted)]">Insufficient data for this insight.</p>
@@ -24,8 +24,8 @@ export function TopPerformingShops({ shops }: { shops: PerformingShop[] }) {
               className="top-shop-row flex items-center gap-4 rounded-2xl border px-4 py-3"
               style={{ animationDelay: `${index * 80}ms` }}
             >
-              <span className="text-2xl" aria-hidden>
-                {MEDALS[index]}
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#E8F4EE] text-sm font-semibold text-[#0B6E4F]" aria-hidden>
+                {index + 1}
               </span>
               {shop.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -44,9 +44,12 @@ export function TopPerformingShops({ shops }: { shops: PerformingShop[] }) {
                   {shop.paid_orders} paid orders · {shop.unique_customers} customers · {shop.engagement_events} engagement events
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-lg font-semibold text-[#0B6E4F]">{Math.round(shop.score)}</p>
+              <div className="w-24 shrink-0 text-right sm:w-32">
+                <p className="text-lg font-semibold tabular-nums text-[var(--lagecto-primary)]">{Math.round(shop.score)}</p>
                 <p className="text-[11px] uppercase tracking-wide text-[var(--lagecto-muted)]">Activity</p>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--lagecto-cream)]">
+                  <span className="block h-full rounded-full bg-[var(--lagecto-primary)]" style={{ width: `${barPercent(shop.score, maxScore)}%` }} />
+                </div>
               </div>
             </li>
           ))}

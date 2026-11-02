@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDateTime, money, titleCase } from "@/lib/format";
 import { SegmentedControl } from "@/components/os/OsUi";
+import { inventoryValuation } from "@/lib/shop/inventory-math";
 
 type Product = {
   id: string;
@@ -14,6 +15,7 @@ type Product = {
   category?: string | null;
   price?: number | null;
   cost?: number | null;
+  barcode?: string | null;
 };
 
 type HistoryRow = {
@@ -52,8 +54,11 @@ export function InventoryBoard({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [error, setError] = useState("");
-  const [reason, setReason] = useState("adjustment");
-  const [delta, setDelta] = useState("1");
+  const [reason, setReason] = useState("restock");
+  const [kind, setKind] = useState<"in" | "out" | "set">("in");
+  const [quantity, setQuantity] = useState("1");
+  const [notes, setNotes] = useState("");
+  const [historyFilter, setHistoryFilter] = useState("all");
   const [selected, setSelected] = useState(products[0]?.id || "");
 
   const rows = useMemo(() => {
@@ -70,7 +75,13 @@ export function InventoryBoard({
   }, [products, query, filter]);
 
   const names = useMemo(() => Object.fromEntries(products.map((product) => [product.id, product.name])), [products]);
-  const inventoryValue = products.reduce((sum, product) => sum + Number(product.cost || product.price || 0) * Number(product.stock || 0), 0);
+  const valuation = inventoryValuation(products);
+  const historyRows = history.filter((row) => {
+    if (historyFilter === "in") return ["received", "returned"].includes(row.transaction_type);
+    if (historyFilter === "out") return ["sold", "damaged"].includes(row.transaction_type);
+    if (historyFilter === "adjust") return row.transaction_type === "adjustment";
+    return true;
+  });
 
   async function adjust(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -80,9 +91,11 @@ export function InventoryBoard({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         productId: selected,
-        shopId,
-        delta: Number(delta),
-        reason,
+        kind,
+        quantity: Number(quantity),
+        target: Number(quantity),
+        reason: kind === "set" ? "adjustment" : reason,
+        notes,
       }),
     });
     const data = await res.json();
@@ -95,7 +108,11 @@ export function InventoryBoard({
       <div className="grid gap-3 sm:grid-cols-3">
         <InsightCard title="Low stock" count={insights?.low_stock?.length || 0} />
         <InsightCard title="Out of stock" count={insights?.out_of_stock?.length || 0} />
-        <InsightCard title="Recorded stock value" hint="Quantity × recorded cost, or price if cost is missing" value={money(inventoryValue)} />
+        <InsightCard
+          title="Recorded stock value"
+          hint={valuation.missingCostProducts ? `${valuation.missingCostProducts} item${valuation.missingCostProducts === 1 ? "" : "s"} have no cost, so they are omitted.` : "Quantity × recorded cost"}
+          value={money(valuation.withCost)}
+        />
       </div>
 
       <section className="os-surface">
@@ -121,17 +138,35 @@ export function InventoryBoard({
           {products.map((product) => (
             <option key={product.id} value={product.id}>
               {product.name}
+              {product.barcode ? ` · ${product.barcode}` : ""} · {product.stock ?? 0} on hand
             </option>
           ))}
         </select>
-        <input value={delta} onChange={(event) => setDelta(event.target.value)} type="number" className="rounded-xl border px-3 py-2" />
-        <select value={reason} onChange={(event) => setReason(event.target.value)} className="rounded-xl border px-3 py-2">
-          <option value="restock">Restock</option>
-          <option value="adjustment">Manual adjustment</option>
-          <option value="damaged">Damaged</option>
-          <option value="returned">Returned</option>
-          <option value="correction">Correction</option>
+        <select value={kind} onChange={(event) => setKind(event.target.value as "in" | "out" | "set")} className="rounded-xl border px-3 py-2">
+          <option value="in">Stock in</option>
+          <option value="out">Stock out</option>
+          <option value="set">Set counted qty</option>
         </select>
+        <input value={quantity} onChange={(event) => setQuantity(event.target.value)} type="number" min={0} className="rounded-xl border px-3 py-2" />
+        {kind === "set" ? (
+          <p className="text-sm text-[var(--lagecto-muted)] md:col-span-2">Reconciliation writes the difference as an adjustment. Stock cannot go below zero.</p>
+        ) : (
+          <select value={reason} onChange={(event) => setReason(event.target.value)} className="rounded-xl border px-3 py-2 md:col-span-2">
+            {kind === "in" ? (
+              <>
+                <option value="restock">Restock / received</option>
+                <option value="returned">Customer return</option>
+              </>
+            ) : (
+              <>
+                <option value="damaged">Damaged</option>
+                <option value="sold">Manual sale / write-off</option>
+                <option value="adjustment">Correction</option>
+              </>
+            )}
+          </select>
+        )}
+        <input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Note (optional)" className="rounded-xl border px-3 py-2 md:col-span-4" />
         <button className="rounded-full bg-[#0B6E4F] px-4 py-2 text-white md:col-span-4">Record stock change</button>
         {error ? <p className="text-sm text-red-700 md:col-span-4">{error}</p> : null}
       </form>
@@ -167,8 +202,20 @@ export function InventoryBoard({
 
       <section className="os-surface">
         <h2 className="mb-3 font-semibold">Stock movement</h2>
-        <p className="mb-4 text-sm text-[var(--lagecto-muted)]">History is append-only. Corrections create a new movement.</p>
-        {!history.length ? (
+        <p className="mb-4 text-sm text-[var(--lagecto-muted)]">History is append-only. Corrections create a new movement. Stock cannot go below zero.</p>
+        <div className="mb-3">
+          <SegmentedControl
+            value={historyFilter}
+            onChange={setHistoryFilter}
+            options={[
+              { value: "all", label: "All" },
+              { value: "in", label: "In" },
+              { value: "out", label: "Out" },
+              { value: "adjust", label: "Adjust" },
+            ]}
+          />
+        </div>
+        {!historyRows.length ? (
           <p className="text-sm text-[var(--lagecto-muted)]">Adjustments, POS sales, and refunds appear here.</p>
         ) : (
           <div className="app-table-wrap">
@@ -184,7 +231,7 @@ export function InventoryBoard({
                 </tr>
               </thead>
               <tbody>
-                {history.map((row) => (
+                {historyRows.map((row) => (
                   <tr key={row.id}>
                     <td>{formatDateTime(row.created_at)}</td>
                     <td>{row.product_id ? names[row.product_id] || "Product" : "—"}</td>

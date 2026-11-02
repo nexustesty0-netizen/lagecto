@@ -1,5 +1,5 @@
 import { SignupForm } from "@/components/auth/SignupForm";
-import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthLayout } from "@/components/auth/AuthLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -8,11 +8,8 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <AuthShell
-      title="Create a customer account"
-      subtitle="This creates a shopper account for orders and receipts. To open a business, use Register a shop instead. Use a strong password with letters and numbers."
-    >
+    <AuthLayout>
       <SignupForm />
-    </AuthShell>
+    </AuthLayout>
   );
 }

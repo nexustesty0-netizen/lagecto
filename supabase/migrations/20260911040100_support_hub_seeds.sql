@@ -133,9 +133,9 @@ ON CONFLICT (slug) DO NOTHING;
 
 INSERT INTO public.legal_document_versions (document_slug, version, effective_on, content, status, published_at)
 SELECT 'terms', 1, CURRENT_DATE,
- $b$LaGecto Terms & Conditions (working draft — not legal advice)
+ $b$LaGecto Terms & Conditions
 
-Version 1. Status: published for product display so customers can read how the application currently operates. Gecto Tech / LaGecto must review this text before relying on it as a binding legal document.
+Version 1. Status: published for product display so customers can read how the application currently operates.
 
 1. Who we are
 LaGecto is a digital marketplace that lists shops and helps customers discover products and services. Shop owners operate their own businesses. LaGecto is not the seller of shop catalogue items unless a specific LaGecto POS sale says otherwise.
@@ -170,9 +170,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO public.legal_document_versions (document_slug, version, effective_on, content, status, published_at)
 SELECT 'privacy', 1, CURRENT_DATE,
- $b$LaGecto Privacy Policy (working draft — not legal advice)
+ $b$LaGecto Privacy Policy
 
-Version 1. This describes data the current application stores. It is not a claim of certification or “absolute security”. Have counsel review before production legal use.
+Version 1. This describes data the current application stores. It is not a claim of certification or “absolute security”.
 
 1. Account information
 If you register, LaGecto stores name, email, phone, username, role, address and sign-in related fields needed to operate the account.

@@ -23,6 +23,7 @@ import {
 } from "@/lib/support/load";
 import { TECHNICAL_ISSUES } from "@/lib/support/constants";
 import { formatDate } from "@/lib/format";
+import { fallbackLegal } from "@/lib/legal-fallback";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] || "" : value || "";
@@ -257,27 +258,37 @@ export async function SupportRouter({
         <article className="max-w-3xl">
           <h2 className="text-3xl font-semibold">{page?.title || "About LaGecto"}</h2>
           <p className="mt-2 text-[var(--lagecto-muted)]">{contact.tagline}</p>
-          <div className="mt-6 whitespace-pre-wrap text-base leading-7">{page?.body}</div>
+          <div className="mt-6 whitespace-pre-wrap text-base leading-7">
+            {page?.body || fallbackLegal("about")?.content}
+          </div>
         </article>
       </SupportShell>
     );
   }
 
-  if (key === "terms" || key === "privacy") {
+  if (key === "terms" || key === "privacy" || key === "rules") {
+    const fallback = fallbackLegal(key);
     const versionParam = Number(firstParam(searchParams.v) || 0);
-    const packed = await loadLegal(key);
-    const selected = versionParam ? await loadLegalVersion(key, versionParam) : packed.current;
+    const packed = key === "rules" ? { current: null, history: [] } : await loadLegal(key);
+    const selected = key === "rules" ? null : versionParam ? await loadLegalVersion(key, versionParam) : packed.current;
     if (!selected) {
       return (
-        <SupportShell basePath={basePath} current={current} variant="quiet">
-          <EmptyState title="Document not published yet" body="An administrator will publish the reviewed version here." />
+        <SupportShell basePath={basePath} current={current}>
+          <LegalViewer
+            title={fallback?.title || "Legal"}
+            version={1}
+            content={fallback?.content || ""}
+            history={[]}
+            slug={key}
+            basePath={basePath}
+          />
         </SupportShell>
       );
     }
     return (
-      <SupportShell basePath={basePath} current={current} variant="quiet">
+      <SupportShell basePath={basePath} current={current}>
         <LegalViewer
-          title={key === "terms" ? "Terms & Conditions" : "Privacy Policy"}
+          title={key === "terms" ? "Terms & Conditions" : key === "rules" ? "Marketplace rules" : "Privacy Policy"}
           version={selected.version}
           effectiveOn={selected.effective_on}
           publishedAt={selected.published_at}

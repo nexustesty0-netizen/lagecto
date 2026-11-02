@@ -1,8 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 import { shopHref } from "@/lib/storefront/paths";
 import { categoryLabel } from "@/lib/brand";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
-import { imageForCategory, type PublicShop } from "@/lib/public-catalog";
+import { type PublicShop } from "@/lib/public-catalog";
+import { QuietCover } from "@/components/media/QuietCover";
 import { VerifiedBadge } from "@/components/shop/VerifiedBadge";
 import { ShopBadgePills } from "@/components/loyalty/BadgeCard";
 
@@ -10,7 +12,6 @@ export function ShopCover({
   name,
   bannerUrl,
   logoUrl,
-  category,
   verified,
   className = "aspect-[4/3]",
 }: {
@@ -21,16 +22,25 @@ export function ShopCover({
   verified?: boolean;
   className?: string;
 }) {
-  const cover = bannerUrl || imageForCategory(category || "other");
   return (
     <div className={`relative overflow-hidden bg-[#eee8d8] ${className}`}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={cover} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+      {bannerUrl ? (
+        <Image
+          src={bannerUrl}
+          alt=""
+          fill
+          sizes="(max-width: 640px) 33vw, 25vw"
+          className="object-cover"
+        />
+      ) : (
+        <QuietCover className="absolute inset-0 h-full w-full" />
+      )}
       {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={logoUrl}
           alt={`${name} logo`}
+          width={40}
+          height={40}
           className="absolute left-2 top-2 h-7 w-7 rounded-lg object-cover shadow-md ring-1 ring-white sm:left-3 sm:top-3 sm:h-10 sm:w-10 sm:rounded-xl sm:ring-2"
         />
       ) : (
@@ -43,13 +53,13 @@ export function ShopCover({
   );
 }
 
-export const SHOP_GRID_CLASS = "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4";
+export const SHOP_GRID_CLASS = "grid grid-cols-3 gap-1.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4";
 
 export function ShopCard({ shop }: { shop: PublicShop & { slug?: string | null } }) {
   return (
     <Link
       href={shopHref(shop)}
-      className="group overflow-hidden rounded-2xl bg-[var(--lagecto-ivory)] shadow-[var(--lg-shadow)] ring-1 ring-[var(--lagecto-border)] transition duration-200 hover:-translate-y-1 hover:shadow-[var(--lg-shadow-hover)] sm:rounded-[22px]"
+      className="overflow-hidden rounded-[var(--lg-radius)] bg-[var(--lagecto-ivory)] ring-1 ring-[var(--lagecto-border)]"
     >
       <ShopCover
         name={shop.name}
@@ -59,24 +69,24 @@ export function ShopCard({ shop }: { shop: PublicShop & { slug?: string | null }
         verified={shop.verificationStatus === "verified"}
         className="aspect-[4/3]"
       />
-      <div className="p-2.5 sm:p-4">
-        <div className="flex items-start justify-between gap-2 sm:gap-3">
+      <div className="p-1.5 sm:p-4">
+        <div className="flex items-start justify-between gap-1 sm:gap-3">
           <div className="min-w-0">
-            <p className="inline-flex flex-wrap items-center gap-1.5 text-sm font-semibold leading-tight sm:gap-2 sm:text-base">
+            <p className="inline-flex flex-wrap items-center gap-1 text-[11px] font-semibold leading-snug sm:gap-2 sm:text-base">
               <span className="line-clamp-2">{shop.name}</span>
-              <VerifiedBadge verified={shop.verificationStatus === "verified"} />
+              <VerifiedBadge verified={shop.verificationStatus === "verified"} className="hidden sm:inline-flex" />
             </p>
-            <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-[var(--lagecto-muted)] sm:gap-1.5 sm:text-sm">
-              <CategoryIcon slug={shop.category} className="h-3.5 w-3.5 shrink-0 text-[#0B6E4F]" />
+            <p className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-[var(--lagecto-muted)] sm:gap-1.5 sm:text-sm">
+              <CategoryIcon slug={shop.category} className="h-3 w-3 shrink-0 text-[#0B6E4F] sm:h-3.5 sm:w-3.5" />
               <span className="truncate">{categoryLabel(shop.category)}</span>
             </p>
           </div>
-          <span className={`badge shrink-0 ${shop.isOpen ? "bg-emerald-50 text-emerald-800" : "bg-gray-100 text-gray-600"}`}>
+          <span className={`badge hidden shrink-0 sm:inline-flex ${shop.isOpen ? "bg-emerald-50 text-emerald-800" : "bg-gray-100 text-gray-600"}`}>
             {shop.isOpen ? "Open" : "Closed"}
           </span>
         </div>
         <p className="mt-2 hidden line-clamp-1 text-sm text-[var(--lagecto-muted)] sm:block">{shop.address || "Address not listed"}</p>
-        <p className="mt-1 text-xs sm:text-sm">
+        <p className="mt-1 text-[10px] sm:text-sm">
           {shop.avgRating.toFixed(1)} · {shop.totalReviews} reviews
         </p>
         <div className="hidden sm:block">

@@ -7,7 +7,6 @@ export function SupportShell({
   basePath,
   current,
   children,
-  variant = "hero",
   showSearch = false,
 }: {
   basePath: string;
@@ -16,37 +15,26 @@ export function SupportShell({
   variant?: "hero" | "quiet";
   showSearch?: boolean;
 }) {
-  if (variant === "quiet") {
-    return (
-      <div className="lg-support-hub">
-        <div className="border-b border-[var(--lagecto-border)] bg-[#073628] text-white">
-          <div className="mx-auto max-w-5xl px-4 py-6">
-            <p className="os-kicker text-[#D4AF37]">Help & Support</p>
-            <SupportNav basePath={basePath} current={current} />
-          </div>
-        </div>
-        <div className="mx-auto max-w-5xl px-4 py-10">{children}</div>
-      </div>
-    );
-  }
-
   return (
     <div className="lg-support-hub">
-      <section className="lg-support-hero">
+      <section className="lg-support-hero sf-hero-frame relative isolate min-h-[20rem] overflow-hidden sm:min-h-[26rem] lg:min-h-[30rem]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={MARKETPLACE_IMAGES.supportHero} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
-        <div className="relative mx-auto max-w-5xl px-4 py-12 sm:py-16">
+        <img src={MARKETPLACE_IMAGES.supportHero} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B6E4F]/82 via-[#0B6E4F]/55 to-[#0B6E4F]/32" />
+        <div className="relative z-[2] mx-auto flex min-h-[20rem] w-full max-w-5xl flex-col justify-center px-4 py-14 sm:min-h-[26rem] sm:px-8 sm:py-20 lg:min-h-[30rem]">
           <p className="os-kicker text-[#D4AF37]">Help & Support</p>
           <h1 className="mt-2 max-w-2xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">How can we help you?</h1>
-          <p className="mt-3 max-w-xl text-white/85">Find answers, report problems, contact support, or learn more about LaGecto.</p>
+          <p className="mt-3 max-w-xl text-white/90">Find answers, report problems, contact support, or read LaGecto policies.</p>
           {showSearch ? (
             <div className="mt-8">
               <SupportSearch basePath={basePath} />
             </div>
           ) : null}
-          <SupportNav basePath={basePath} current={current} />
         </div>
       </section>
+      <div className="mx-auto max-w-5xl px-4 pt-6">
+        <SupportNav basePath={basePath} current={current} />
+      </div>
       <div className="mx-auto max-w-5xl px-4 py-10">{children}</div>
     </div>
   );

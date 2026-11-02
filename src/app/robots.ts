@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { siteUrl } from "@/lib/format";
+import { NOINDEX_PATH_PREFIXES } from "@/lib/seo-paths.mjs";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -7,26 +8,12 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: ["WhatsApp", "facebookexternalhit", "Facebot", "Twitterbot", "LinkedInBot", "Slackbot"],
         allow: "/",
+        disallow: ["/customer", "/shop", "/admin", "/app", "/api"],
       },
       {
         userAgent: "*",
-        allow: [
-          "/",
-          "/s/",
-          "/marketplace",
-          "/shops",
-          "/support",
-          "/about",
-          "/how-it-works",
-          "/features",
-          "/for-customers",
-          "/for-shops",
-          "/help",
-          "/contact",
-          "/login",
-          "/signup",
-        ],
-        disallow: ["/customer", "/shop", "/admin", "/app", "/api"],
+        allow: "/",
+        disallow: [...NOINDEX_PATH_PREFIXES],
       },
     ],
     sitemap: `${siteUrl()}/sitemap.xml`,

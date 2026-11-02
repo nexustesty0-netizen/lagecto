@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 export function ConfirmDialog({
   open,
   title,
@@ -15,6 +17,15 @@ export function ConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onCancel();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onCancel]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#12241c]/40 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
@@ -24,10 +35,10 @@ export function ConfirmDialog({
         </h2>
         <p className="mt-2 text-sm text-[var(--lagecto-muted)]">{body}</p>
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="rounded-full border px-4 py-2 text-sm">
+          <button type="button" onClick={onCancel} className="lg-btn-secondary">
             Cancel
           </button>
-          <button type="button" onClick={onConfirm} className="rounded-full bg-[#C2413B] px-4 py-2 text-sm font-semibold text-white">
+          <button type="button" onClick={onConfirm} className="lg-btn-danger">
             {confirmLabel}
           </button>
         </div>
